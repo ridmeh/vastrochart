@@ -1,0 +1,12 @@
+services:
+  vastrochart-compute:
+    build:
+      context: .
+      dockerfile: apps/vastrochart-compute/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=DEBUG
+      - API_KEY_PEPPER=dev-pepper-not-prod
+    volumes:
+      - ./apps/vastrochart-compute/ephemeris:/opt/ephemeris:ro

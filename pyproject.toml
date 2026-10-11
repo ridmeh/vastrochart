@@ -1,0 +1,16 @@
+[project]
+name = "vastrochart"
+version = "0.1.0"
+description = "VAstroChart monorepo workspace root — stateless Vedic + K.P. astrology chart compute API."
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = ["apps/*"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# prototypes/ and tools/ are explicitly non-shipped per README.md's repo map —
+# starter/template code and dev tooling, not held to the product lint bar.
+extend-exclude = ["prototypes", "tools"]

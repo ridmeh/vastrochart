@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# uv / venv
+.venv/
+.uv/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Swiss Ephemeris binary data — large, license-sensitive, fetched manually (see apps/vastrochart-compute/ephemeris/NOTE.md)
+apps/vastrochart-compute/ephemeris/*.se1
+
+# Private dogfood golden chart — never public (see docs/07-reference-chart.md)
+tests/golden/chart_10_owner_reference.json
+apps/vastrochart-compute/tests/golden/chart_10_owner_reference.json

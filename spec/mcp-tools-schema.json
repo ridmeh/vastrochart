@@ -1,0 +1,143 @@
+{
+  "server": "chart-compute-mcp",
+  "version": "0.2.0",
+  "description": "Vedic + K.P. astrology computation MCP server. Deterministic, stateless. compute_chart must run first; all other tools take the computed values they need as explicit input (see docs/04-mcp-spec.md Call Sequencing).",
+  "tools": [
+    {
+      "name": "compute_chart",
+      "description": "Compute full natal chart (Vedic + K.P.) from birth data. Both house systems always computed.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["dob", "tob", "tz_offset", "lat", "lon"],
+        "properties": {
+          "dob": {"type": "string", "format": "date"},
+          "tob": {"type": "string", "pattern": "^\\d{2}:\\d{2}$"},
+          "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"},
+          "lat": {"type": "number", "minimum": -90, "maximum": 90},
+          "lon": {"type": "number", "minimum": -180, "maximum": 180},
+          "ayanamsa": {"type": "string", "enum": ["lahiri", "krishnamurti", "raman"], "default": "lahiri"}
+        }
+      }
+    },
+    {
+      "name": "get_dasha",
+      "description": "Vimshottari dasha hierarchy as of a date.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["moon_sidereal_longitude", "dob", "tob", "tz_offset", "as_of_date"],
+        "properties": {
+          "moon_sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360},
+          "dob": {"type": "string", "format": "date"},
+          "tob": {"type": "string", "pattern": "^\\d{2}:\\d{2}$"},
+          "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"},
+          "as_of_date": {"type": "string", "format": "date"},
+          "depth": {"type": "string", "enum": ["md", "ad", "pd", "sookshma", "prana"], "default": "sookshma"}
+        }
+      }
+    },
+    {
+      "name": "get_mudda_dasha",
+      "description": "Annual sub-dasha from solar return. Derives its own birth balance from moon_sidereal_longitude.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["moon_sidereal_longitude", "dob", "year_offset"],
+        "properties": {
+          "moon_sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360},
+          "dob": {"type": "string", "format": "date"},
+          "year_offset": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    {
+      "name": "get_panchang",
+      "description": "Five limbs of a day with transition timestamps.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["date", "lat", "lon", "tz_offset"],
+        "properties": {
+          "date": {"type": "string", "format": "date"},
+          "lat": {"type": "number"},
+          "lon": {"type": "number"},
+          "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"}
+        }
+      }
+    },
+    {
+      "name": "get_hora",
+      "description": "24 planetary hours for a day.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["date", "lat", "lon", "tz_offset"],
+        "properties": {
+          "date": {"type": "string", "format": "date"},
+          "lat": {"type": "number"},
+          "lon": {"type": "number"},
+          "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"}
+        }
+      }
+    },
+    {
+      "name": "get_transit_hits",
+      "description": "Find transits contacting natal degrees.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["natal_points", "start_date", "end_date"],
+        "properties": {
+          "natal_points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "sidereal_longitude"],
+              "properties": {
+                "name": {"type": "string"},
+                "sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360}
+              }
+            }
+          },
+          "start_date": {"type": "string", "format": "date"},
+          "end_date": {"type": "string", "format": "date"},
+          "planets": {"type": "array", "items": {"type": "string"}},
+          "aspect_types": {"type": "array", "items": {"type": "string", "enum": ["conjunction", "opposition", "trine", "square", "sextile"]}},
+          "orb_degrees": {"type": "number", "default": 1.0}
+        }
+      }
+    },
+    {
+      "name": "compute_divisional",
+      "description": "Vargas (divisional charts): D9, D10, D12 etc. Pure transform of D1 longitudes.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["natal_planets", "ascendant_sidereal_longitude", "varga"],
+        "properties": {
+          "natal_planets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "sidereal_longitude"],
+              "properties": {
+                "name": {"type": "string"},
+                "sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360}
+              }
+            }
+          },
+          "ascendant_sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360},
+          "varga": {"type": "string", "enum": ["D1", "D9", "D10", "D12", "D16", "D20", "D24", "D30", "D60"]}
+        }
+      }
+    },
+    {
+      "name": "detect_yogas",
+      "description": "Classical yoga detection — Raja, Dhana, Arishta, Pancha Mahapurusha, etc. Pure function on an already-computed chart.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["planets", "houses", "ascendant"],
+        "properties": {
+          "planets": {"type": "array"},
+          "houses": {"type": "object"},
+          "ascendant": {"type": "object"},
+          "yoga_corpus": {"type": "string", "enum": ["raja", "dhana", "arishta", "mahapurusha", "all"], "default": "all"}
+        }
+      }
+    }
+  ]
+}
