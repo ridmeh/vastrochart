@@ -24,6 +24,12 @@ build/
 # Swiss Ephemeris binary data — large, license-sensitive, fetched manually (see apps/vastrochart-compute/ephemeris/NOTE.md)
 apps/vastrochart-compute/ephemeris/*.se1
 
-# Private dogfood golden chart — never public (see docs/07-reference-chart.md)
-tests/golden/chart_10_owner_reference.json
+# Private dogfood golden charts — real individuals' birth data, never public
+# (see docs/07-reference-chart.md and the goldendata/ source screenshots below)
+apps/vastrochart-compute/tests/golden/private_*.json
 apps/vastrochart-compute/tests/golden/chart_10_owner_reference.json
+tests/golden/private_*.json
+tests/golden/chart_10_owner_reference.json
+
+# Raw birth-chart screenshots used to build private golden fixtures — PII, never public
+goldendata/
