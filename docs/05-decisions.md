@@ -210,3 +210,11 @@ Chronological log of key architectural decisions, with context and rationale.
 **Decision**: `retrograde` for Rahu and Ketu is always derived from actual signed ephemeris speed, never hardcoded `True`. Ketu's `retrograde` and `speed_degrees_per_day` mirror Rahu's exactly (same node, 180° apart, identical rate of change). `speed_degrees_per_day` is signed across all planets (negative = retrograde) rather than an unsigned magnitude paired with a separate boolean.
 **Rationale**: Caught while reviewing the schema after ADR-019 (True Node switch): the Mean Node is always retrograde by construction, so a hardcoded `retrograde=True` for Ketu (and an unconditional sign-of-speed check for Rahu) was harmless under Mean Node but becomes a real bug under True Node, which can briefly go stationary/direct. Golden chart #4 ("retrograde Rahu" edge case) exists specifically to catch this — it only has teeth if the compute path actually derives retrograde from speed rather than assuming it. `prototypes/chart_compute.py` fixed accordingly (Ketu now inherits Rahu's computed `retrograde`, not a literal `True`).
 **Trade-off**: None — this is a correctness fix, not a scope trade-off.
+
+---
+
+## ADR-024: Public, open-core repo from Day 2 — not held private until launch
+
+**Decision**: `vastrochart` is a public GitHub repository from scaffolding onward, not kept private until launch. This also settles ADR-001's open AGPL question: we comply via the "publish source" path, not the commercial Swiss Ephemeris license — the repo being public from day one makes that path trivial rather than a separate step to remember at launch.
+**Rationale**: The owner's own AstroApp (main app, separate project) is where the real differentiated product logic lives — interpretation, narrative, UX, business logic. VAstroChart is pure positional/structural compute; there's little competitive downside to the compute engine itself being visible, and `docs/01-vision.md`'s own marketing plan already called for an "open-source MCP client" and a "downloadable golden chart library" to build developer trust. Going public from Day 2 is consistent with that positioning rather than deferred to launch.
+**Trade-off**: None significant — no proprietary business logic (pricing, billing, customer data) lives in this repo; that stays in Key Vault/Stripe/the main app.

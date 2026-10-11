@@ -116,8 +116,8 @@ Not part of MVP commitment:
 ## Open Questions To Resolve Before Week 1
 
 1. **Domain**: `vastrochart.com` available? Backup: `vastrochart.io`, `vastrochart.dev`?
-2. **Repo visibility**: Private GitHub during Week 1-2, public (open-core) at launch?
-3. **Swiss Ephemeris licensing**: Comply with AGPL (publish source) OR buy commercial? (~€400)
+2. ~~**Repo visibility**: Private GitHub during Week 1-2, public (open-core) at launch?~~ **RESOLVED (2026-10-11, ADR-024)**: public from Day 2, not deferred to launch.
+3. ~~**Swiss Ephemeris licensing**: Comply with AGPL (publish source) OR buy commercial? (~€400)~~ **RESOLVED (2026-10-11, ADR-024)**: comply-by-publishing-source — trivial given the repo is already public, no commercial license needed.
 4. **Stripe account**: Personal or form an LLC first? (US LLC takes 1-2 weeks; could ship on personal Stripe, migrate later)
 5. **Legal entity decision**: US LLC vs India Pvt Ltd vs sole-prop launch
 
