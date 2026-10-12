@@ -15,7 +15,8 @@
           "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"},
           "lat": {"type": "number", "minimum": -90, "maximum": 90},
           "lon": {"type": "number", "minimum": -180, "maximum": 180},
-          "ayanamsa": {"type": "string", "enum": ["lahiri", "krishnamurti", "raman"], "default": "lahiri"}
+          "ayanamsa": {"type": "string", "enum": ["lahiri", "krishnamurti", "raman"], "default": "lahiri"},
+          "node_type": {"type": "string", "enum": ["true", "mean"], "default": "true"}
         }
       }
     },

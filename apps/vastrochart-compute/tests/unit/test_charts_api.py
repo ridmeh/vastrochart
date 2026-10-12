@@ -89,3 +89,14 @@ def test_moshier_fallback_date_succeeds_with_warning() -> None:
     body = response.json()
     assert body["ephemeris"]["data_source"] == "moshier_analytical"
     assert body["warnings"][0]["code"] == "EPHEMERIS_LOW_PRECISION_FALLBACK"
+
+
+def test_node_type_mean_differs_from_default_true() -> None:
+    default_response = client.post("/v1/charts/compute", json=VALID_BODY)
+    mean_response = client.post("/v1/charts/compute", json={**VALID_BODY, "node_type": "mean"})
+    default_rahu = next(
+        p for p in default_response.json()["data"]["planets"] if p["name"] == "Rahu"
+    )
+    mean_rahu = next(p for p in mean_response.json()["data"]["planets"] if p["name"] == "Rahu")
+    assert default_rahu["sidereal_longitude"] != mean_rahu["sidereal_longitude"]
+    assert mean_response.json()["input"]["node_type"] == "mean"

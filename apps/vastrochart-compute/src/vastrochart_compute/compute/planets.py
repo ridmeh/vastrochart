@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import swisseph as swe
 
-from vastrochart_compute.compute.constants import AYANAMSA_MODES, PLANET_IDS
+from vastrochart_compute.compute.constants import AYANAMSA_MODES, NODE_IDS, PLANET_IDS
 from vastrochart_compute.compute.exceptions import EphemerisRangeError
 
 
@@ -34,13 +34,12 @@ def _calc_ut(jd_ut: float, planet_id: int) -> tuple[float, float, str]:
     return float(values[0]), float(values[3]), source
 
 
-def compute_raw_planet_positions(jd_ut: float, ayanamsa: str) -> list[RawPlanetPosition]:
+def compute_raw_planet_positions(
+    jd_ut: float, ayanamsa: str, node_type: str = "true"
+) -> list[RawPlanetPosition]:
     swe.set_sid_mode(AYANAMSA_MODES[ayanamsa])
 
     positions = []
-    rahu_longitude = 0.0
-    rahu_speed = 0.0
-    rahu_source = "swiss_ephemeris"
     for name, planet_id in PLANET_IDS.items():
         longitude, speed, source = _calc_ut(jd_ut, planet_id)
         positions.append(
@@ -52,9 +51,17 @@ def compute_raw_planet_positions(jd_ut: float, ayanamsa: str) -> list[RawPlanetP
                 ephemeris_source=source,
             )
         )
-        if name == "Rahu":
-            rahu_longitude, rahu_speed, rahu_source = longitude, speed, source
 
+    rahu_longitude, rahu_speed, rahu_source = _calc_ut(jd_ut, NODE_IDS[node_type])
+    positions.append(
+        RawPlanetPosition(
+            name="Rahu",
+            sidereal_longitude=rahu_longitude,
+            speed_degrees_per_day=rahu_speed,
+            retrograde=rahu_speed < 0,
+            ephemeris_source=rahu_source,
+        )
+    )
     positions.append(
         RawPlanetPosition(
             name="Ketu",

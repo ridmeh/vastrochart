@@ -17,10 +17,15 @@ as Chart 1/2/3 with no other identifying detail).
 three charts. Rules out a Lahiri-variant mismatch as the cause of anything
 below.
 
-**Rahu/Ketu**: off by 64–100 arc-minutes (over 1 degree) in all three charts.
-Expected and already documented — AstroSage appears to use the **Mean Node**;
-VAstroChart uses the **True Node** per ADR-019. Excluded from strict golden
-tolerance; sign/nakshatra still checked.
+**Rahu/Ketu**: off by 64–100 arc-minutes (over 1 degree) in all three charts
+when VAstroChart computes its default **True Node** (ADR-019). **Confirmed
+2026-10-12** (ADR-027): recomputing all three charts with `node_type="mean"`
+closes the delta to under 0.3 arc-minutes in every case — AstroSage uses the
+Mean Node. Not a bug; `node_type` is now a request parameter so callers can
+choose either. Golden regression still checks against the True Node default
+and excludes Rahu/Ketu longitude from strict tolerance there (sign/nakshatra
+still checked), since that's testing our *default* behavior against
+Mean-Node source data by design.
 
 **Sun, Moon, Mercury, Venus, Mars**: consistently within ~0.1–1.7 arc-minutes
 across all three charts — well inside the ±2' tolerance.

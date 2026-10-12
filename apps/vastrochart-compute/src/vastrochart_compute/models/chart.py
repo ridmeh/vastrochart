@@ -22,6 +22,9 @@ class ChartComputeRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     ayanamsa: Literal["lahiri", "krishnamurti", "raman"] = "lahiri"
+    # True vs Mean Rahu/Ketu - a genuine methodological split, not a bug to
+    # paper over (ADR-027). Default "true" matches ADR-019.
+    node_type: Literal["true", "mean"] = "true"
     # Accepted for forward-compatibility, no effect in v1 - both house
     # systems are always computed (ADR-020).
     house_systems: list[str] | None = None

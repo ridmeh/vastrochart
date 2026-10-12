@@ -40,11 +40,11 @@ class ChartComputeResult:
 
 
 def _build_planet_models(
-    jd_ut: float, lagna_longitude: float, ayanamsa: str
+    jd_ut: float, lagna_longitude: float, ayanamsa: str, node_type: str
 ) -> tuple[list[PlanetModel], str]:
     """Returns (planet models, ephemeris_source) - source is "moshier" if any
     planet fell back to it, else "swiss_ephemeris"."""
-    raw_positions = compute_raw_planet_positions(jd_ut, ayanamsa)
+    raw_positions = compute_raw_planet_positions(jd_ut, ayanamsa, node_type)
     zodiacal = {p.name: nakshatras.locate(p.sidereal_longitude) for p in raw_positions}
     other_signs = {name: zodiacal[name].sign for name in CLASSICAL_PLANETS}
     ephemeris_source = (
@@ -134,7 +134,13 @@ def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> li
 
 
 def compute_natal_chart(
-    dob: str, tob: str, tz_offset: str, lat: float, lon: float, ayanamsa: str = "lahiri"
+    dob: str,
+    tob: str,
+    tz_offset: str,
+    lat: float,
+    lon: float,
+    ayanamsa: str = "lahiri",
+    node_type: str = "true",
 ) -> ChartComputeResult:
     configure_ephemeris_path()
     jd_ut = to_julian_day_ut(dob, tob, tz_offset)
@@ -156,7 +162,7 @@ def compute_natal_chart(
         kp_sub_sub_lord=lagna_sub_lords.sub_sub_lord,
     )
 
-    planets, ephemeris_source = _build_planet_models(jd_ut, lagna_longitude, ayanamsa)
+    planets, ephemeris_source = _build_planet_models(jd_ut, lagna_longitude, ayanamsa, node_type)
     whole_sign = _build_whole_sign_houses(lagna_longitude, planets)
 
     placidus_result = houses_mod.compute_placidus_cusps(jd_ut, lat, lon, ayanamsa)

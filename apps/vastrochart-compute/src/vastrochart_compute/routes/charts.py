@@ -24,6 +24,7 @@ def compute_chart(request: ChartComputeRequest) -> dict[str, Any]:
         lat=request.lat,
         lon=request.lon,
         ayanamsa=request.ayanamsa,
+        node_type=request.node_type,
     )
     return build_envelope(
         endpoint=ENDPOINT_PATH,

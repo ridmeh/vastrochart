@@ -45,7 +45,8 @@ get_hora(date, lat, lon, tz_offset)       ← same
     "tz_offset": "string, ISO-style signed offset, e.g. '+05:30'",
     "lat": "float, degrees",
     "lon": "float, degrees",
-    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')"
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
+    "node_type": "enum: 'true' | 'mean' (default: 'true') - Rahu/Ketu node type, ADR-027"
   },
   "output": {
     "ayanamsa": { "name": "...", "value_degrees": "float", "value_formatted": "DMS string" },

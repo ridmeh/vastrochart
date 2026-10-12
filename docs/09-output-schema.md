@@ -48,9 +48,12 @@ Every response wraps the payload in a standard envelope:
   "lat": 28.6139,
   "lon": 77.2090,
   "ayanamsa": "lahiri",
+  "node_type": "true",
   "house_systems": ["whole_sign", "placidus_kp"]
 }
 ```
+
+- `node_type` ∈ `"true" | "mean"`, default `"true"` — Rahu/Ketu computed from the True Node or Mean Node (ADR-027). A genuine methodological split (different schools/tools default differently), not a precision bug — both values are "correct" within their tradition. Ketu always mirrors Rahu + 180° regardless.
 
 **Response `data`**:
 
@@ -188,7 +191,7 @@ Every response wraps the payload in a standard envelope:
 - Nakshatra distribution shows which planet is in each of 27 nakshatras, Lagna included
 - Graha drishti (Vedic aspects) always included; Lagna is a valid aspect target, not just planets
 - K.P. cuspal interlinks (`aspects.kp_cuspal`) always included: for each house, its cuspal sub-lord and which other houses that sub-lord's planet rules — the classical "cuspal interlink" technique
-- Rahu/Ketu computed from the **True Node** (not Mean Node) per ADR-019 — matters for K.P. sub-lord precision at boundaries
+- Rahu/Ketu default to the **True Node** per ADR-019 — matters for K.P. sub-lord precision at boundaries — but callers can request `node_type: "mean"` instead (ADR-027); both are legitimate, not a precision workaround
 - `speed_degrees_per_day` is **signed** — negative means retrograde, consistent with the `retrograde` boolean; never cross-check two fields that could disagree (ADR-023)
 - Rahu AND Ketu `retrograde` are both computed from actual signed speed, never hardcoded — Ketu mirrors Rahu's retrograde state exactly, since it's the same node viewed 180° away (ADR-023)
 - `houses.whole_sign[].aspected_by` is always derived from `aspects.vedic_graha_drishti` at render time — never computed independently, to prevent the two from silently disagreeing

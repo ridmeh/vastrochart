@@ -76,7 +76,8 @@ AYANAMSA_MODES = {
     "raman": swe.SIDM_RAMAN,
 }
 
-# Rahu = True Node per ADR-019. Ketu is always Rahu + 180 deg, computed, not looked up.
+# Sun..Saturn only - Rahu's id depends on node_type (NODE_IDS below) and is
+# resolved separately in compute/planets.py. Ketu is always Rahu + 180 deg.
 PLANET_IDS = {
     "Sun": swe.SUN,
     "Moon": swe.MOON,
@@ -85,7 +86,14 @@ PLANET_IDS = {
     "Mars": swe.MARS,
     "Jupiter": swe.JUPITER,
     "Saturn": swe.SATURN,
-    "Rahu": swe.TRUE_NODE,
+}
+
+# Rahu node type - request-parameterized (ADR-027). Both are legitimate,
+# different schools/tools default differently (we default "true" per
+# ADR-019). Ketu always mirrors Rahu + 180 deg regardless of node type.
+NODE_IDS = {
+    "true": swe.TRUE_NODE,
+    "mean": swe.MEAN_NODE,
 }
 
 PLANET_SANSKRIT = {
