@@ -18,7 +18,7 @@ compute_chart(dob, tob, tz_offset, lat, lon, ayanamsa)
         │  returns: ascendant, planets[9], houses{whole_sign, placidus_kp}, nakshatra_distribution, aspects
         │
         ├──► get_dasha(moon_sidereal_longitude, dob, tob, tz_offset, as_of_date, depth)
-        ├──► get_mudda_dasha(moon_sidereal_longitude, dob, year_offset)
+        ├──► get_mudda_dasha(moon_sidereal_longitude, natal_sun_longitude, dob, tob, tz_offset, year_offset, as_of_date)
         ├──► compute_divisional(natal_planets, ascendant_sidereal_longitude, varga)
         ├──► detect_yogas(natal_planets, houses, ascendant, yoga_corpus)
         └──► get_transit_hits(natal_points, start_date, end_date, planets, aspect_types, orb_degrees)
@@ -122,7 +122,7 @@ get_hora(date, lat, lon, tz_offset)       ← same
 
 ## Tool 3: `get_mudda_dasha`
 
-**Purpose**: Annual sub-dasha based on solar return. Stateless — derives its own birth-MD balance from `moon_sidereal_longitude`, does not require `get_dasha` to have run first.
+**Purpose**: Annual (Varshaphal) sub-dasha based on the solar return (ADR-030). Stateless — derives its own birth-MD balance from `moon_sidereal_longitude`, does not require `get_dasha` to have run first. Needs `natal_sun_longitude` too, to locate the solar return itself.
 
 ```json
 {
@@ -130,8 +130,13 @@ get_hora(date, lat, lon, tz_offset)       ← same
   "description": "Annual sub-dasha for a given year of life, computed from the solar return.",
   "input": {
     "moon_sidereal_longitude": "float — from compute_chart's planets array (Moon)",
+    "natal_sun_longitude": "float — from compute_chart's planets array (Sun)",
     "dob": "ISO date",
-    "year_offset": "int, e.g. 50 for the 50th year of life"
+    "tob": "24h time, e.g. '14:30'",
+    "tz_offset": "string, e.g. '+05:30'",
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
+    "year_offset": "int, e.g. 50 for the 50th year of life",
+    "as_of_date": "ISO date, optional, default today - which day within the mudda year to describe"
   },
   "output": {
     "solar_return_date": "ISO date",

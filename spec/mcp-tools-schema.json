@@ -38,14 +38,19 @@
     },
     {
       "name": "get_mudda_dasha",
-      "description": "Annual sub-dasha from solar return. Derives its own birth balance from moon_sidereal_longitude.",
+      "description": "Annual (Varshaphal) sub-dasha from the solar return. Derives its own birth balance from moon_sidereal_longitude.",
       "inputSchema": {
         "type": "object",
-        "required": ["moon_sidereal_longitude", "dob", "year_offset"],
+        "required": ["moon_sidereal_longitude", "natal_sun_longitude", "dob", "tob", "tz_offset", "year_offset"],
         "properties": {
           "moon_sidereal_longitude": {"type": "number", "minimum": 0, "maximum": 360},
+          "natal_sun_longitude": {"type": "number", "minimum": 0, "maximum": 360},
           "dob": {"type": "string", "format": "date"},
-          "year_offset": {"type": "integer", "minimum": 0}
+          "tob": {"type": "string", "pattern": "^\\d{2}:\\d{2}$"},
+          "tz_offset": {"type": "string", "pattern": "^[+-]\\d{2}:\\d{2}$"},
+          "ayanamsa": {"type": "string", "enum": ["lahiri", "krishnamurti", "raman"], "default": "lahiri"},
+          "year_offset": {"type": "integer", "minimum": 0},
+          "as_of_date": {"type": "string", "format": "date"}
         }
       }
     },

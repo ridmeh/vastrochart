@@ -305,7 +305,8 @@ Every response wraps the payload in a standard envelope:
   "lat": 28.6139,
   "lon": 77.2090,
   "ayanamsa": "lahiri",
-  "year_offset": 36
+  "year_offset": 36,
+  "as_of_date": "2026-02-01"
 }
 ```
 
@@ -314,21 +315,22 @@ Every response wraps the payload in a standard envelope:
 {
   "solar_return_date": "2026-01-15",
   "mudda_md": {
-    "lord": "Jupiter",
+    "lord": "Venus",
     "start": "2026-01-15",
-    "end": "2026-02-30"
+    "end": "2026-02-05"
   },
   "mudda_ad": {
     "lord": "Saturn",
-    "start": "2026-01-15",
-    "end": "2026-01-20"
+    "start": "2026-01-28",
+    "end": "2026-02-01"
   }
 }
 ```
 
 - `year_offset` is the year of life (36 = the solar return nearest the native's 36th birthday); `solar_return_date` is when transiting Sun returns to its natal sidereal longitude for that year
-- Mudda periods scale the same 9-planet Vimshottari proportions to **days** within the ~365-day solar year (120 days total per ADR — see `docs/02-domain-knowledge.md`), rather than years within the 120-year cycle
-- `mudda_md` always present; `mudda_ad` present when nested sub-period is requested (depth param reserved for future AD/PD mudda nesting — v1 ships MD + AD only)
+- `as_of_date` is optional, default today — which day within the mudda year `mudda_md`/`mudda_ad` describe. Added deliberately (ADR-030): the original schema draft omitted it, which left no way to say which day the output applies to.
+- Mudda periods scale the **same 120-unit Vimshottari proportional cycle** as natal dasha, compressed to span one **full solar year** (~365.25 days, not a 120-day sub-slice — every day of the year has an active lord). 1 Vimshottari-year unit ≈ 365.25/120 ≈ 3.04 days (ADR-030; see `docs/02-domain-knowledge.md`). The birth-nakshatra balance fraction is the same one natal dasha uses, reused unchanged every year.
+- `mudda_md` and `mudda_ad` are always both present — v1 ships exactly these two levels, no deeper nesting and no depth parameter.
 
 ---
 

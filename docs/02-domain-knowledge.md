@@ -38,7 +38,7 @@ Hierarchy: **Mahadasha (MD) → Antardasha (AD) → Pratyantardasha (PD) → Soo
 Each level uses the same 9-planet sequence proportioned within the parent.
 
 ### Mudda Vimshottari Dasha
-Annual sub-dasha. Calculated from the solar return date. 120 days total within a solar year, each MD/AD scaled down to days instead of years.
+Annual sub-dasha (Varshaphal). Calculated from the solar return date. The same 120-unit Vimshottari proportional cycle used for natal dasha is compressed to span one full solar year (~365.25 days), not years and not a 120-day sub-slice — every day of the mudda year has an active lord. 1 Vimshottari-year unit ≈ 365.25/120 ≈ 3.04 days (ADR-030). The birth-nakshatra balance fraction is reused every year unchanged — it's a fixed property of the natal Moon, not something that changes with solar returns.
 
 ### Panchang
 Five limbs of a day, from local sunrise:

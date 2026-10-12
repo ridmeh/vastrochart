@@ -21,6 +21,11 @@ human reads dasha transition dates.
 balance_formatted's Y/M/D breakdown uses decimal-year x 12 months, 30-day
 leftover - a design choice, not an asserted universal convention (classical
 software varies on this). Cross-check against golden data if available.
+
+`balance_fraction`, `balance_truncated_segments`, `julian_day_local_midnight`,
+and `jd_ut_to_local_string` are public (not underscore-prefixed) because
+compute/mudda.py (Mudda/Varshaphal annual dasha, ADR-030) reuses them - same
+birth-nakshatra balance basis and date-formatting logic, different time unit.
 """
 
 from dataclasses import dataclass
@@ -61,7 +66,7 @@ class MahadashaPeriod:
     age_at_end: float
 
 
-def _balance_fraction(moon_sidereal_longitude: float) -> tuple[str, Fraction]:
+def balance_fraction(moon_sidereal_longitude: float) -> tuple[str, Fraction]:
     longitude = Fraction(moon_sidereal_longitude % 360)
     nakshatra_index = int(longitude // NAKSHATRA_ARC_FRACTION) % 27
     lord = NAKSHATRAS[nakshatra_index][1]
@@ -89,7 +94,7 @@ def _format_balance_ymd(years: Fraction) -> str:
 
 
 def compute_balance_at_birth(moon_sidereal_longitude: float) -> BalanceAtBirth:
-    lord, years = _balance_fraction(moon_sidereal_longitude)
+    lord, years = balance_fraction(moon_sidereal_longitude)
     return BalanceAtBirth(
         lord=lord,
         balance_years=round(float(years), 4),
@@ -97,30 +102,35 @@ def compute_balance_at_birth(moon_sidereal_longitude: float) -> BalanceAtBirth:
     )
 
 
-def _md_segments(moon_sidereal_longitude: float) -> list[Segment]:
-    """[(lord, start_days_from_birth, end_days_from_birth)] for the 9 MDs of
-    one full 120-year cycle - first entry is the birth balance (partial)."""
-    balance_lord, balance_years = _balance_fraction(moon_sidereal_longitude)
-    start_index = VIM_ORDER.index(balance_lord)
+def balance_truncated_segments(
+    moon_sidereal_longitude: float, days_per_unit: Fraction = DAYS_PER_YEAR
+) -> list[Segment]:
+    """[(lord, start_days_from_anchor, end_days_from_anchor)] for the 9
+    segments of one full 120-unit Vimshottari cycle - first entry is the
+    birth-nakshatra balance (partial). `days_per_unit` converts Vimshottari
+    "year" units into real days: 365.25 for natal dasha (1 unit = 1 real
+    year), ~3.04 for Mudda dasha (120 units = 1 real solar year)."""
+    lord_of_balance, balance_units = balance_fraction(moon_sidereal_longitude)
+    start_index = VIM_ORDER.index(lord_of_balance)
     segments: list[Segment] = []
     cursor = Fraction(0)
-    first_duration = balance_years * DAYS_PER_YEAR
-    segments.append((balance_lord, cursor, cursor + first_duration))
+    first_duration = balance_units * days_per_unit
+    segments.append((lord_of_balance, cursor, cursor + first_duration))
     cursor += first_duration
     for offset in range(1, 9):
         lord = VIM_ORDER[(start_index + offset) % 9]
-        duration = Fraction(VIM_YEARS[lord]) * DAYS_PER_YEAR
+        duration = Fraction(VIM_YEARS[lord]) * days_per_unit
         segments.append((lord, cursor, cursor + duration))
         cursor += duration
     return segments
 
 
-def _julian_day_local_midnight(date_str: str) -> Fraction:
+def julian_day_local_midnight(date_str: str) -> Fraction:
     year, month, day = (int(part) for part in date_str.split("-"))
     return Fraction(swe.julday(year, month, day, 0.0))
 
 
-def _jd_ut_to_local_string(jd_ut: Fraction, tz_offset_hours: Fraction, as_datetime: bool) -> str:
+def jd_ut_to_local_string(jd_ut: Fraction, tz_offset_hours: Fraction, as_datetime: bool) -> str:
     local_jd = float(jd_ut + tz_offset_hours / 24)
     year, month, day, hour_frac = swe.revjul(local_jd)
     if not as_datetime:
@@ -141,13 +151,13 @@ def compute_mahadasha_sequence(
     moon_sidereal_longitude: float, dob: str, tob: str, tz_offset: str
 ) -> list[MahadashaPeriod]:
     tz_hours = Fraction(parse_tz_offset(tz_offset)).limit_denominator(1440)
-    birth_jd_ut = _birth_jd_ut(dob, tob, tz_offset)
-    segments = _md_segments(moon_sidereal_longitude)
+    birth_jd_ut = birth_jd_ut_for(dob, tob, tz_offset)
+    segments = balance_truncated_segments(moon_sidereal_longitude)
     return [
         MahadashaPeriod(
             lord=lord,
-            start=_jd_ut_to_local_string(birth_jd_ut + start_days, tz_hours, False),
-            end=_jd_ut_to_local_string(birth_jd_ut + end_days, tz_hours, False),
+            start=jd_ut_to_local_string(birth_jd_ut + start_days, tz_hours, False),
+            end=jd_ut_to_local_string(birth_jd_ut + end_days, tz_hours, False),
             age_at_start=round(float(start_days / DAYS_PER_YEAR), 2),
             age_at_end=round(float(end_days / DAYS_PER_YEAR), 2),
         )
@@ -155,7 +165,7 @@ def compute_mahadasha_sequence(
     ]
 
 
-def _birth_jd_ut(dob: str, tob: str, tz_offset: str) -> Fraction:
+def birth_jd_ut_for(dob: str, tob: str, tz_offset: str) -> Fraction:
     # Wraps the existing float conversion (time_utils.py) rather than
     # duplicating it - exact from this point on, since everything downstream
     # is Fraction arithmetic; only this single starting value is float-derived.
@@ -172,14 +182,14 @@ def _active_md_segment(moon_sidereal_longitude: float, elapsed_days: Fraction) -
     lord its complete fixed years). Extrapolated for extreme old age (>120
     years), a case classical texts don't practically address - a reasoned
     interpretation, not a verified convention."""
-    first_pass = _md_segments(moon_sidereal_longitude)
+    first_pass = balance_truncated_segments(moon_sidereal_longitude)
     first_pass_total = first_pass[-1][2]
     if elapsed_days < first_pass_total:
         return locate_segment(elapsed_days, first_pass)
 
-    balance_lord = first_pass[0][0]
+    lord_of_balance = first_pass[0][0]
     full_cycle_days = Fraction(120) * DAYS_PER_YEAR
-    full_cycle = proportion_segments(balance_lord, full_cycle_days)
+    full_cycle = proportion_segments(lord_of_balance, full_cycle_days)
     remaining_elapsed = elapsed_days - first_pass_total
     cycle_number = remaining_elapsed // full_cycle_days
     elapsed_in_cycle = remaining_elapsed - cycle_number * full_cycle_days
@@ -202,8 +212,8 @@ def _period_dict(
     percent_elapsed = (elapsed_days - start_days) / duration * 100
     result: dict[str, str | float] = {
         "lord": lord,
-        "start": _jd_ut_to_local_string(birth_jd_ut + start_days, tz_hours, as_datetime),
-        "end": _jd_ut_to_local_string(birth_jd_ut + end_days, tz_hours, as_datetime),
+        "start": jd_ut_to_local_string(birth_jd_ut + start_days, tz_hours, as_datetime),
+        "end": jd_ut_to_local_string(birth_jd_ut + end_days, tz_hours, as_datetime),
         "percent_elapsed": round(float(percent_elapsed), 1),
     }
     if include_years_remaining:
@@ -220,8 +230,8 @@ def compute_active_dasha(
     depth: str = "sookshma",
 ) -> dict[str, dict[str, str | float]]:
     tz_hours = Fraction(parse_tz_offset(tz_offset)).limit_denominator(1440)
-    birth_jd_ut = _birth_jd_ut(dob, tob, tz_offset)
-    as_of_jd_ut = _julian_day_local_midnight(as_of_date) - tz_hours / 24
+    birth_jd_ut = birth_jd_ut_for(dob, tob, tz_offset)
+    as_of_jd_ut = julian_day_local_midnight(as_of_date) - tz_hours / 24
     elapsed = as_of_jd_ut - birth_jd_ut
     depth_index = DEPTH_ORDER.index(depth)
 
