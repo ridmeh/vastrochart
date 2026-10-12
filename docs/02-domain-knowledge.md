@@ -73,7 +73,13 @@ Rahu is computed from the **True Node** (`swe.TRUE_NODE`), not the Mean Node (AD
 - Otherwise, dignity is the **Panchadha Maitri** (five-fold compound relationship) to the sign's lord:
   1. **Naisargika Maitri** (natural friendship) — a fixed 9×9 table from BPHS giving each planet's inherent relationship (friend/neutral/enemy) to every other planet.
   2. **Tatkalika Maitri** (temporary friendship) — planets occupying the 2nd, 3rd, 4th, 10th, 11th, or 12th house *from each other* (by current position, not natal fixed) are temporary friends; all other positions are temporary enemies.
-  3. **Compound**: both natural+temporary friendly → `great_friend`; one friendly + one neutral → `friend`; both neutral → `neutral`; one unfriendly + one neutral → `enemy`; both natural+temporary unfriendly → `great_enemy`.
+  3. **Compound** (temporal is binary friend/enemy; natural is friend/neutral/enemy):
+
+     | Natural ↓ \ Temporal → | Friend | Enemy |
+     |---|---|---|
+     | **Friend** | `great_friend` | `neutral` |
+     | **Neutral** | `friend` | `enemy` |
+     | **Enemy** | `neutral` | `great_enemy` |
 
 This means dignity requires knowing **every planet's current position relative to every other planet**, not just which sign a single planet occupies — compute this after all planetary positions are known, not per-planet in isolation.
 

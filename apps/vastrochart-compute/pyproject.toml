@@ -40,6 +40,10 @@ select = ["E", "F", "I", "UP", "B"]
 strict = true
 python_version = "3.12"
 
+[[tool.mypy.overrides]]
+module = "swisseph"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
