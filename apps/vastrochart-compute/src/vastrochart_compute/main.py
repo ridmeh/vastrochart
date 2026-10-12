@@ -9,6 +9,7 @@ from vastrochart_compute.compute.exceptions import EphemerisRangeError
 from vastrochart_compute.envelope import build_error_envelope
 from vastrochart_compute.routes.charts import router as charts_router
 from vastrochart_compute.routes.dasha import router as dasha_router
+from vastrochart_compute.routes.hora import router as hora_router
 from vastrochart_compute.routes.mudda import router as mudda_router
 from vastrochart_compute.routes.panchang import router as panchang_router
 
@@ -17,6 +18,7 @@ app.include_router(charts_router)
 app.include_router(dasha_router)
 app.include_router(mudda_router)
 app.include_router(panchang_router)
+app.include_router(hora_router)
 
 EPHEMERIS_PATH = Path(os.environ.get("EPHEMERIS_PATH", "/opt/ephemeris"))
 
