@@ -8,9 +8,11 @@ from fastapi.responses import JSONResponse
 from vastrochart_compute.compute.exceptions import EphemerisRangeError
 from vastrochart_compute.envelope import build_error_envelope
 from vastrochart_compute.routes.charts import router as charts_router
+from vastrochart_compute.routes.dasha import router as dasha_router
 
 app = FastAPI(title="VAstroChart Compute", version="0.1.0")
 app.include_router(charts_router)
+app.include_router(dasha_router)
 
 EPHEMERIS_PATH = Path(os.environ.get("EPHEMERIS_PATH", "/opt/ephemeris"))
 

@@ -88,3 +88,19 @@ a reference-tool error, or a legitimate ephemeris version difference. The
 owner is the single approver for which applies and for any resulting golden-
 entry or tolerance change — this file records findings, it doesn't make that
 call unilaterally.
+
+---
+
+## AstroSage vs VAstroChart: Vimshottari dasha balance at birth
+
+**Measured 2026-10-12** against the same 3 private golden charts' `dasha_balance_at_birth_per_source_tool` field (captured from AstroSage's "Dasa Balance" display, not independently re-verified against a second tool).
+
+| Chart | Lord | Computed | AstroSage | Delta |
+|---|---|---|---|---|
+| 1 | Ketu | 4y 7m 22d | 4y 7m 24d | ~2 days |
+| 2 | Saturn | 15y 1m 0d | 15y 1m 3d | ~3 days |
+| 3 | Jupiter | 15y 7m 3d | 15y 7m 3d | exact |
+
+**Lord matches exactly in all three** — confirms the nakshatra-lord determination is correct. The small day-level deltas are consistent with (not a new discrepancy beyond) the already-documented ~0.1–0.4 arcmin Moon longitude noise between the two tools: that fraction of an 800-arcmin nakshatra arc, times a lord's Vimshottari years (up to 20), works out to roughly the same few-day magnitude seen here. Not treated as a bug.
+
+**Formatting convention validated**: `balance_formatted`'s Y/M/D breakdown (decimal-year × 12 months, 30-day leftover, carrying 30d→1m and 12m→1y) matches AstroSage's own display convention closely enough (exact match on chart 3) to treat as confirmed, not just a guess — see `compute/dasha.py`.
