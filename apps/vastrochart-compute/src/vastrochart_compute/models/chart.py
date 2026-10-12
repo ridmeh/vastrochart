@@ -93,7 +93,7 @@ class WholeSignHouse(BaseModel):
     sign: str
     sign_lord: str
     occupants: list[str]
-    aspected_by: list[str] | None = None  # graha drishti not yet implemented
+    aspected_by: list[str]
 
 
 class PlacidusHouse(BaseModel):
@@ -120,8 +120,28 @@ class AyanamsaInfo(BaseModel):
     value_formatted: str
 
 
+class GrahaDrishti(BaseModel):
+    from_: str = Field(serialization_alias="from")
+    to: str
+    aspect_type: str
+    strength: str
+
+
+class CuspalInterlink(BaseModel):
+    house: int
+    cuspal_sub_lord: str | None
+    interlinked_houses: list[int]
+
+
+class Aspects(BaseModel):
+    vedic_graha_drishti: list[GrahaDrishti]
+    kp_cuspal: list[CuspalInterlink]  # empty when Placidus is unavailable (ADR-022)
+
+
 class NatalChart(BaseModel):
     ayanamsa: AyanamsaInfo
     ascendant: AscendantModel
     planets: list[PlanetModel]
     houses: Houses
+    nakshatra_distribution: dict[str, list[str]]
+    aspects: Aspects

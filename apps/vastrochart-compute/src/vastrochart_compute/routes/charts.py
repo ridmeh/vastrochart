@@ -29,7 +29,7 @@ def compute_chart(request: ChartComputeRequest) -> dict[str, Any]:
     return build_envelope(
         endpoint=ENDPOINT_PATH,
         request_input=request.model_dump(),
-        data=result.chart.model_dump(mode="json"),
+        data=result.chart.model_dump(mode="json", by_alias=True),
         warnings=result.warnings,
         compute_started_at=started_at,
         ephemeris_source=result.ephemeris_source,

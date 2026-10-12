@@ -36,3 +36,16 @@ def locate(sidereal_longitude: float) -> ZodiacalPosition:
         nakshatra_lord=nakshatra_lord,
         pada=pada,
     )
+
+
+def nakshatra_key(display_name: str) -> str:
+    return display_name.lower().replace(" ", "_")
+
+
+def build_nakshatra_distribution(occupants: dict[str, str]) -> dict[str, list[str]]:
+    """occupants: {point_name: nakshatra_display_name} (planets + "Lagna").
+    Returns all 27 canonical nakshatra keys, each mapped to its occupants."""
+    distribution: dict[str, list[str]] = {nakshatra_key(name): [] for name, _lord in NAKSHATRAS}
+    for point_name, nakshatra_display_name in occupants.items():
+        distribution[nakshatra_key(nakshatra_display_name)].append(point_name)
+    return distribution

@@ -1,14 +1,14 @@
 """Natal chart orchestrator: ties together ephemeris, nakshatra, dignity,
-house, and K.P. sub-lord modules into the response shape
+house, K.P. sub-lord, and aspects modules into the response shape
 docs/09-output-schema.md defines.
 
 `combust` is still pending (blocked on the orb-threshold decision,
-docs/06-roadmap.md open items). Aspects and nakshatra_distribution are not
-part of this module.
+docs/06-roadmap.md open items).
 """
 
 from dataclasses import dataclass, field
 
+from vastrochart_compute.compute import aspects as aspects_mod
 from vastrochart_compute.compute import dignity as dignity_mod
 from vastrochart_compute.compute import houses as houses_mod
 from vastrochart_compute.compute import kp_sublord, nakshatras
@@ -23,7 +23,10 @@ from vastrochart_compute.compute.planets import (
 from vastrochart_compute.compute.time_utils import to_julian_day_ut
 from vastrochart_compute.models.chart import (
     AscendantModel,
+    Aspects,
     AyanamsaInfo,
+    CuspalInterlink,
+    GrahaDrishti,
     Houses,
     NatalChart,
     PlacidusHouse,
@@ -88,7 +91,7 @@ def _build_planet_models(
 
 
 def _build_whole_sign_houses(
-    lagna_longitude: float, planets: list[PlanetModel]
+    lagna_longitude: float, planets: list[PlanetModel], aspected_by_map: dict[int, list[str]]
 ) -> list[WholeSignHouse]:
     from vastrochart_compute.compute.constants import SIGN_LORDS, SIGNS
 
@@ -99,14 +102,20 @@ def _build_whole_sign_houses(
         occupants = [p.name for p in planets if p.house_vedic_wholesign == house_number]
         result.append(
             WholeSignHouse(
-                house=house_number, sign=sign, sign_lord=SIGN_LORDS[sign], occupants=occupants
+                house=house_number,
+                sign=sign,
+                sign_lord=SIGN_LORDS[sign],
+                occupants=occupants,
+                aspected_by=aspected_by_map[house_number],
             )
         )
     return result
 
 
-def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> list[PlacidusHouse]:
-    result = []
+def _build_placidus_houses(
+    cusps: list[float], planets: list[PlanetModel]
+) -> tuple[list[PlacidusHouse], list[CuspalInterlink]]:
+    houses = []
     for house_number in range(1, 13):
         cusp_longitude = cusps[house_number - 1]
         pos = nakshatras.locate(cusp_longitude)
@@ -116,7 +125,7 @@ def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> li
             for p in planets
             if houses_mod.placidus_house_for(p.sidereal_longitude, cusps) == house_number
         ]
-        result.append(
+        houses.append(
             PlacidusHouse(
                 house=house_number,
                 cusp_sidereal_longitude=round(cusp_longitude, 4),
@@ -130,7 +139,28 @@ def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> li
                 occupants=occupants,
             )
         )
-    return result
+
+    # Cuspal interlink: the houses a cusp's sub-lord "signifies" - the
+    # house(s) it owns (as sign lord of a Placidus cusp) plus the house it
+    # currently occupies. Standard K.P. cuspal sub-lord significator rule.
+    planet_by_name = {p.name: p for p in planets}
+    interlinks = []
+    for house in houses:
+        sub_lord = house.kp_sub_lord
+        houses_ruled = {h.house for h in houses if h.sign_lord == sub_lord}
+        houses_occupied: set[int] = set()
+        if sub_lord in planet_by_name:
+            houses_occupied = {
+                houses_mod.placidus_house_for(planet_by_name[sub_lord].sidereal_longitude, cusps)
+            }
+        interlinks.append(
+            CuspalInterlink(
+                house=house.house,
+                cuspal_sub_lord=sub_lord,
+                interlinked_houses=sorted(houses_ruled | houses_occupied),
+            )
+        )
+    return houses, interlinks
 
 
 def compute_natal_chart(
@@ -163,7 +193,24 @@ def compute_natal_chart(
     )
 
     planets, ephemeris_source = _build_planet_models(jd_ut, lagna_longitude, ayanamsa, node_type)
-    whole_sign = _build_whole_sign_houses(lagna_longitude, planets)
+
+    planet_houses = {p.name: p.house_vedic_wholesign for p in planets}
+    graha_drishti_raw = aspects_mod.compute_graha_drishti(planet_houses)
+    graha_drishti = [
+        GrahaDrishti(
+            from_=entry["from"],
+            to=entry["to"],
+            aspect_type=entry["aspect_type"],
+            strength=entry["strength"],
+        )
+        for entry in graha_drishti_raw
+    ]
+    aspected_by_map = aspects_mod.compute_aspected_by(planet_houses)
+    whole_sign = _build_whole_sign_houses(lagna_longitude, planets, aspected_by_map)
+
+    nakshatra_occupants = {p.name: p.nakshatra for p in planets}
+    nakshatra_occupants["Lagna"] = lagna_pos.nakshatra
+    nakshatra_distribution = nakshatras.build_nakshatra_distribution(nakshatra_occupants)
 
     placidus_result = houses_mod.compute_placidus_cusps(jd_ut, lat, lon, ayanamsa)
     warnings: list[dict[str, str]] = []
@@ -177,8 +224,9 @@ def compute_natal_chart(
             }
         )
     placidus_kp: list[PlacidusHouse] | None = None
+    kp_cuspal: list[CuspalInterlink] = []
     if placidus_result.cusps is not None:
-        placidus_kp = _build_placidus_houses(placidus_result.cusps, planets)
+        placidus_kp, kp_cuspal = _build_placidus_houses(placidus_result.cusps, planets)
         for planet in planets:
             planet.house_kp_placidus = houses_mod.placidus_house_for(
                 planet.sidereal_longitude, placidus_result.cusps
@@ -202,5 +250,7 @@ def compute_natal_chart(
         ascendant=ascendant,
         planets=planets,
         houses=Houses(whole_sign=whole_sign, placidus_kp=placidus_kp),
+        nakshatra_distribution=nakshatra_distribution,
+        aspects=Aspects(vedic_graha_drishti=graha_drishti, kp_cuspal=kp_cuspal),
     )
     return ChartComputeResult(chart=chart, warnings=warnings, ephemeris_source=ephemeris_source)
