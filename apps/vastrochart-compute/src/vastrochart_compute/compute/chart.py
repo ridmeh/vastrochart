@@ -1,15 +1,17 @@
-"""Natal chart orchestrator: ties together ephemeris, nakshatra, dignity, and
-house modules into the response shape docs/09-output-schema.md defines.
+"""Natal chart orchestrator: ties together ephemeris, nakshatra, dignity,
+house, and K.P. sub-lord modules into the response shape
+docs/09-output-schema.md defines.
 
-K.P. sub-lord and combust are Day 4 work (not yet computed - left None).
-Aspects and nakshatra_distribution are not part of this module.
+`combust` is still pending (blocked on the orb-threshold decision,
+docs/06-roadmap.md open items). Aspects and nakshatra_distribution are not
+part of this module.
 """
 
 from dataclasses import dataclass, field
 
 from vastrochart_compute.compute import dignity as dignity_mod
 from vastrochart_compute.compute import houses as houses_mod
-from vastrochart_compute.compute import nakshatras
+from vastrochart_compute.compute import kp_sublord, nakshatras
 from vastrochart_compute.compute.constants import CLASSICAL_PLANETS, PLANET_SANSKRIT, PLANET_SYMBOL
 from vastrochart_compute.compute.ephemeris_init import configure_ephemeris_path
 from vastrochart_compute.compute.formatting import to_dms_string
@@ -47,6 +49,7 @@ def _build_planet_models(jd_ut: float, lagna_longitude: float, ayanamsa: str) ->
         dignity_value = dignity_mod.compute_dignity(
             raw.name, pos.sign, pos.sign_degree, other_signs
         )
+        sub_lords = kp_sublord.compute_kp_sub_lords(raw.sidereal_longitude)
         models.append(
             PlanetModel(
                 name=raw.name,
@@ -61,6 +64,8 @@ def _build_planet_models(jd_ut: float, lagna_longitude: float, ayanamsa: str) ->
                 nakshatra=pos.nakshatra,
                 nakshatra_lord=pos.nakshatra_lord,
                 pada=pos.pada,
+                kp_sub_lord=sub_lords.sub_lord,
+                kp_sub_sub_lord=sub_lords.sub_sub_lord,
                 retrograde=raw.retrograde,
                 dignity=dignity_value,
                 speed_degrees_per_day=round(raw.speed_degrees_per_day, 4),
@@ -95,6 +100,7 @@ def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> li
     for house_number in range(1, 13):
         cusp_longitude = cusps[house_number - 1]
         pos = nakshatras.locate(cusp_longitude)
+        sub_lords = kp_sublord.compute_kp_sub_lords(cusp_longitude)
         occupants = [
             p.name
             for p in planets
@@ -109,6 +115,8 @@ def _build_placidus_houses(cusps: list[float], planets: list[PlanetModel]) -> li
                 sign_lord=pos.sign_lord,
                 nakshatra=pos.nakshatra,
                 nakshatra_lord=pos.nakshatra_lord,
+                kp_sub_lord=sub_lords.sub_lord,
+                kp_sub_sub_lord=sub_lords.sub_sub_lord,
                 occupants=occupants,
             )
         )
@@ -122,6 +130,7 @@ def compute_natal_chart(
     jd_ut = to_julian_day_ut(dob, tob, tz_offset)
     lagna_longitude = compute_ascendant_longitude(jd_ut, lat, lon, ayanamsa)
     lagna_pos = nakshatras.locate(lagna_longitude)
+    lagna_sub_lords = kp_sublord.compute_kp_sub_lords(lagna_longitude)
 
     ascendant = AscendantModel(
         sidereal_longitude=round(lagna_longitude, 4),
@@ -133,6 +142,8 @@ def compute_natal_chart(
         nakshatra=lagna_pos.nakshatra,
         nakshatra_lord=lagna_pos.nakshatra_lord,
         pada=lagna_pos.pada,
+        kp_sub_lord=lagna_sub_lords.sub_lord,
+        kp_sub_sub_lord=lagna_sub_lords.sub_sub_lord,
     )
 
     planets = _build_planet_models(jd_ut, lagna_longitude, ayanamsa)

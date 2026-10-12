@@ -178,3 +178,19 @@ NAISARGIKA_ENEMIES = {
 }
 
 CLASSICAL_PLANETS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+# Vimshottari dasha sequence and years (sum = 120). Fixed cyclic order - used
+# both for dasha periods and for K.P. sub-lord subdivision (ADR pending for
+# dasha; sub-lord in compute/kp_sublord.py).
+VIM_ORDER = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"]
+VIM_YEARS = {
+    "Ketu": 7,
+    "Venus": 20,
+    "Sun": 6,
+    "Moon": 10,
+    "Mars": 7,
+    "Rahu": 18,
+    "Jupiter": 16,
+    "Saturn": 19,
+    "Mercury": 17,
+}
