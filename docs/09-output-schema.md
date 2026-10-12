@@ -192,6 +192,7 @@ Every response wraps the payload in a standard envelope:
 - `speed_degrees_per_day` is **signed** — negative means retrograde, consistent with the `retrograde` boolean; never cross-check two fields that could disagree (ADR-023)
 - Rahu AND Ketu `retrograde` are both computed from actual signed speed, never hardcoded — Ketu mirrors Rahu's retrograde state exactly, since it's the same node viewed 180° away (ADR-023)
 - `houses.whole_sign[].aspected_by` is always derived from `aspects.vedic_graha_drishti` at render time — never computed independently, to prevent the two from silently disagreeing
+- `dignity` is a 9-value enum: `exalted | moolatrikona | own | great_friend | friend | neutral | enemy | great_enemy | debilitated` — the five relationship values are the classical Panchadha Maitri compound (natural + temporary friendship), not a flat per-sign lookup (ADR-025)
 
 **Polar degeneracy example** (e.g. lat 70°N, midsummer):
 ```json

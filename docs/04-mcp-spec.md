@@ -66,7 +66,7 @@ get_hora(date, lat, lon, tz_offset)       ← same
         "nakshatra": "string", "nakshatra_lord": "string", "pada": "int, 1-4",
         "kp_sub_lord": "string", "kp_sub_sub_lord": "string",
         "retrograde": "boolean", "combust": "boolean",
-        "dignity": "enum: exalted | moolatrikona | own | neutral | enemy | debilitated",
+        "dignity": "enum: exalted | moolatrikona | own | great_friend | friend | neutral | enemy | great_enemy | debilitated (Panchadha Maitri — ADR-025)",
         "speed_degrees_per_day": "float",
         "house_vedic_wholesign": "int, 1-12",
         "house_kp_placidus": "int, 1-12"
