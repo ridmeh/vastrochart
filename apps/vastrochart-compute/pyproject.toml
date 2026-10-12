@@ -10,6 +10,7 @@ dependencies = [
   "fastmcp>=0.2",
   "pydantic>=2.9",
   "structlog>=24",
+  "python-ulid>=2",
   # azure-monitor-opentelemetry deferred to Week 3 per tasks/week-1-day-by-day.md
 ]
 

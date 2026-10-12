@@ -1,12 +1,51 @@
 """Pydantic models matching docs/09-output-schema.md field-for-field.
 
-K.P. sub-lord fields and `combust` are Optional and unset for now - those
-land in Day 4 (sub-lord algorithm) and once combustion orbs are decided
-(open item, see docs/06-roadmap.md). Leaving them None rather than
+`combust` is Optional and unset for now - blocked on the orb-threshold
+decision (open item, see docs/06-roadmap.md). Leaving it None rather than
 fabricating a value keeps the contract honest about what's actually computed.
 """
 
-from pydantic import BaseModel
+import re
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+_DOB_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_TOB_PATTERN = re.compile(r"^\d{2}:\d{2}$")
+_TZ_OFFSET_PATTERN = re.compile(r"^[+-]\d{2}:\d{2}$")
+
+
+class ChartComputeRequest(BaseModel):
+    dob: str
+    tob: str
+    tz_offset: str
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    ayanamsa: Literal["lahiri", "krishnamurti", "raman"] = "lahiri"
+    # Accepted for forward-compatibility, no effect in v1 - both house
+    # systems are always computed (ADR-020).
+    house_systems: list[str] | None = None
+
+    @field_validator("dob")
+    @classmethod
+    def _validate_dob(cls, value: str) -> str:
+        if not _DOB_PATTERN.match(value):
+            raise ValueError("dob must be YYYY-MM-DD")
+        return value
+
+    @field_validator("tob")
+    @classmethod
+    def _validate_tob(cls, value: str) -> str:
+        if not _TOB_PATTERN.match(value):
+            raise ValueError("tob must be HH:MM (24h)")
+        return value
+
+    @field_validator("tz_offset")
+    @classmethod
+    def _validate_tz_offset(cls, value: str) -> str:
+        if not _TZ_OFFSET_PATTERN.match(value):
+            raise ValueError("tz_offset must be signed HH:MM, e.g. '+05:30'")
+        return value
 
 
 class AscendantModel(BaseModel):

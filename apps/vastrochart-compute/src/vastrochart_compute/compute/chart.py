@@ -36,12 +36,22 @@ from vastrochart_compute.models.chart import (
 class ChartComputeResult:
     chart: NatalChart
     warnings: list[dict[str, str]] = field(default_factory=list)
+    ephemeris_source: str = "swiss_ephemeris"  # or "moshier" - see EPHEMERIS_LOW_PRECISION_FALLBACK
 
 
-def _build_planet_models(jd_ut: float, lagna_longitude: float, ayanamsa: str) -> list[PlanetModel]:
+def _build_planet_models(
+    jd_ut: float, lagna_longitude: float, ayanamsa: str
+) -> tuple[list[PlanetModel], str]:
+    """Returns (planet models, ephemeris_source) - source is "moshier" if any
+    planet fell back to it, else "swiss_ephemeris"."""
     raw_positions = compute_raw_planet_positions(jd_ut, ayanamsa)
     zodiacal = {p.name: nakshatras.locate(p.sidereal_longitude) for p in raw_positions}
     other_signs = {name: zodiacal[name].sign for name in CLASSICAL_PLANETS}
+    ephemeris_source = (
+        "moshier"
+        if any(p.ephemeris_source == "moshier" for p in raw_positions)
+        else "swiss_ephemeris"
+    )
 
     models = []
     for raw in raw_positions:
@@ -74,7 +84,7 @@ def _build_planet_models(jd_ut: float, lagna_longitude: float, ayanamsa: str) ->
                 ),
             )
         )
-    return models
+    return models, ephemeris_source
 
 
 def _build_whole_sign_houses(
@@ -146,11 +156,20 @@ def compute_natal_chart(
         kp_sub_sub_lord=lagna_sub_lords.sub_sub_lord,
     )
 
-    planets = _build_planet_models(jd_ut, lagna_longitude, ayanamsa)
+    planets, ephemeris_source = _build_planet_models(jd_ut, lagna_longitude, ayanamsa)
     whole_sign = _build_whole_sign_houses(lagna_longitude, planets)
 
     placidus_result = houses_mod.compute_placidus_cusps(jd_ut, lat, lon, ayanamsa)
     warnings: list[dict[str, str]] = []
+    if ephemeris_source == "moshier":
+        warnings.append(
+            {
+                "code": "EPHEMERIS_LOW_PRECISION_FALLBACK",
+                "message": "Date outside the loaded Swiss Ephemeris file range; "
+                "planetary positions computed via the lower-precision Moshier model.",
+                "field": "dob",
+            }
+        )
     placidus_kp: list[PlacidusHouse] | None = None
     if placidus_result.cusps is not None:
         placidus_kp = _build_placidus_houses(placidus_result.cusps, planets)
@@ -178,4 +197,4 @@ def compute_natal_chart(
         planets=planets,
         houses=Houses(whole_sign=whole_sign, placidus_kp=placidus_kp),
     )
-    return ChartComputeResult(chart=chart, warnings=warnings)
+    return ChartComputeResult(chart=chart, warnings=warnings, ephemeris_source=ephemeris_source)

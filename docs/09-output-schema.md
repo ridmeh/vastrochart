@@ -31,7 +31,7 @@ Every response wraps the payload in a standard envelope:
 - `request_id` is `req_` + ULID — same prefix on every endpoint, no per-endpoint variants; developers echo it in support requests
 - `computed_at` is server UTC
 - `compute_ms` is a performance signal for developers to budget around
-- `ephemeris.library_version` is the pyswisseph library version; `data_source` is the ephemeris data file (DE431) — these version independently, kept separate to avoid ambiguity when debugging (ADR-021)
+- `ephemeris.library_version` is the pyswisseph library version; `data_source` is the ephemeris data file — these version independently, kept separate to avoid ambiguity when debugging (ADR-021). `data_source` is per-response, not a fixed constant: `"DE431"` when the loaded high-precision files covered the requested date, `"moshier_analytical"` when it fell back to the lower-precision Moshier model (ADR-026; see `EPHEMERIS_LOW_PRECISION_FALLBACK` below)
 - `warnings` is always present (empty array when none) — non-fatal advisories about the response, e.g. a house system that couldn't be computed for the given input (see Placidus polar degeneracy below, ADR-022). Distinct from `error`: a response with `warnings` still has a full `data` payload; a response with `error` does not.
 - `input` echoes resolved inputs (useful when caller passed defaults)
 
@@ -579,12 +579,14 @@ All errors follow this envelope:
 **Error codes committed to**:
 - `INVALID_DATE`, `INVALID_TIME`, `INVALID_TZ`, `INVALID_LATITUDE`, `INVALID_LONGITUDE`
 - `UNSUPPORTED_AYANAMSA`, `UNSUPPORTED_HOUSE_SYSTEM`, `UNSUPPORTED_VARGA`
-- `DATE_OUT_OF_EPHEMERIS_RANGE` (DE431 covers ~13,000 BCE to 17,000 CE)
+- `DATE_OUT_OF_EPHEMERIS_RANGE` — empirically verified (2026-10-12, ADR-026) against the live `pyswisseph`/Moshier engine: roughly 3000 BCE to 3000 CE is the hard outer limit regardless of which data files are loaded. A date within that range but outside the currently-*loaded* high-precision files degrades to `EPHEMERIS_LOW_PRECISION_FALLBACK` (a warning, not this error) rather than failing.
+- `INVALID_REQUEST` — generic fallback for a request validation failure that doesn't map to one of the specific field codes above (ADR-026)
 - `RATE_LIMIT_EXCEEDED`, `INVALID_API_KEY`, `SUBSCRIPTION_INACTIVE`
 - `INTERNAL_COMPUTE_ERROR` (retry-safe: true)
 
 **Warning codes committed to** (envelope `warnings` array, response still has full `data` — see ADR-021/ADR-022):
 - `PLACIDUS_DEGENERATE_AT_LATITUDE` — Placidus cusps undefined at this latitude/date; `houses.placidus_kp` is `null`, `houses.whole_sign` unaffected
+- `EPHEMERIS_LOW_PRECISION_FALLBACK` (ADR-026) — date is within the engine's computable range but outside the currently-loaded high-precision Swiss Ephemeris files, so planetary positions were computed via the lower-precision Moshier analytical model instead; `ephemeris.data_source` in the envelope reflects this (`"moshier_analytical"` instead of `"DE431"`) for the same response
 
 **Never** leak:
 - Raw stack traces

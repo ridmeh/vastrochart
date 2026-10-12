@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import swisseph as swe
 
 from vastrochart_compute.compute.constants import AYANAMSA_MODES, PLANET_IDS
+from vastrochart_compute.compute.exceptions import EphemerisRangeError
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,20 @@ class RawPlanetPosition:
     sidereal_longitude: float
     speed_degrees_per_day: float
     retrograde: bool
+    ephemeris_source: str  # "swiss_ephemeris" (our loaded files) or "moshier" (fallback)
+
+
+def _calc_ut(jd_ut: float, planet_id: int) -> tuple[float, float, str]:
+    try:
+        values, flags = swe.calc_ut(jd_ut, planet_id, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    except swe.Error as exc:
+        # calc_ut's only failure mode here is the date falling outside even
+        # Moshier's own usable range - verified empirically 2026-10-12
+        # (see docs/05-decisions.md). Any other library-level failure would
+        # also land here; not differentiated further for now.
+        raise EphemerisRangeError(str(exc)) from exc
+    source = "moshier" if flags & swe.FLG_MOSEPH else "swiss_ephemeris"
+    return float(values[0]), float(values[3]), source
 
 
 def compute_raw_planet_positions(jd_ut: float, ayanamsa: str) -> list[RawPlanetPosition]:
@@ -25,19 +40,20 @@ def compute_raw_planet_positions(jd_ut: float, ayanamsa: str) -> list[RawPlanetP
     positions = []
     rahu_longitude = 0.0
     rahu_speed = 0.0
+    rahu_source = "swiss_ephemeris"
     for name, planet_id in PLANET_IDS.items():
-        values, _flags = swe.calc_ut(jd_ut, planet_id, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-        longitude, speed = values[0], values[3]
+        longitude, speed, source = _calc_ut(jd_ut, planet_id)
         positions.append(
             RawPlanetPosition(
                 name=name,
                 sidereal_longitude=longitude,
                 speed_degrees_per_day=speed,
                 retrograde=speed < 0,
+                ephemeris_source=source,
             )
         )
         if name == "Rahu":
-            rahu_longitude, rahu_speed = longitude, speed
+            rahu_longitude, rahu_speed, rahu_source = longitude, speed, source
 
     positions.append(
         RawPlanetPosition(
@@ -45,14 +61,21 @@ def compute_raw_planet_positions(jd_ut: float, ayanamsa: str) -> list[RawPlanetP
             sidereal_longitude=(rahu_longitude + 180) % 360,
             speed_degrees_per_day=rahu_speed,
             retrograde=rahu_speed < 0,
+            ephemeris_source=rahu_source,
         )
     )
     return positions
 
 
 def compute_ascendant_longitude(jd_ut: float, lat: float, lon: float, ayanamsa: str) -> float:
+    """Uses the Whole-Sign house system ('W'), not Placidus ('P'), purely to
+    extract the Ascendant point - verified empirically (2026-10-12) that
+    ascmc[0] is identical across house systems, but Whole-Sign still resolves
+    at polar latitudes where Placidus raises swisseph.Error entirely (cusps
+    AND ascmc together). Whole-Sign houses need the Ascendant to exist even
+    when Placidus degenerates (ADR-022) - this was a real bug until fixed."""
     swe.set_sid_mode(AYANAMSA_MODES[ayanamsa])
-    _cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, b"P", swe.FLG_SIDEREAL)
+    _cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, b"W", swe.FLG_SIDEREAL)
     return float(ascmc[0])
 
 

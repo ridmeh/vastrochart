@@ -1,4 +1,5 @@
 from vastrochart_compute.compute.houses import compute_placidus_cusps, whole_sign_house
+from vastrochart_compute.compute.planets import compute_ascendant_longitude
 from vastrochart_compute.compute.time_utils import to_julian_day_ut
 
 
@@ -33,3 +34,13 @@ def test_placidus_degenerates_at_deep_polar_latitude() -> None:
     jd = to_julian_day_ut("2026-06-21", "12:00", "+00:00")
     result = compute_placidus_cusps(jd, 75.0, 10.0, "lahiri")
     assert result.cusps is None
+
+
+def test_ascendant_still_resolves_at_deep_polar_latitude() -> None:
+    # Regression test (ADR-022 addendum): compute_ascendant_longitude used
+    # to request Placidus just to read ascmc[0], which raised the same error
+    # as the cusps computation and took down the whole request. It now uses
+    # Whole-Sign, which resolves everywhere Placidus degenerates.
+    jd = to_julian_day_ut("2026-06-21", "12:00", "+00:00")
+    longitude = compute_ascendant_longitude(jd, 75.0, 10.0, "lahiri")
+    assert 0.0 <= longitude < 360.0
