@@ -13,6 +13,7 @@ from vastrochart_compute.routes.divisional import router as divisional_router
 from vastrochart_compute.routes.hora import router as hora_router
 from vastrochart_compute.routes.mudda import router as mudda_router
 from vastrochart_compute.routes.panchang import router as panchang_router
+from vastrochart_compute.routes.yogas import router as yogas_router
 
 app = FastAPI(title="VAstroChart Compute", version="0.1.0")
 app.include_router(charts_router)
@@ -21,6 +22,7 @@ app.include_router(mudda_router)
 app.include_router(panchang_router)
 app.include_router(hora_router)
 app.include_router(divisional_router)
+app.include_router(yogas_router)
 
 EPHEMERIS_PATH = Path(os.environ.get("EPHEMERIS_PATH", "/opt/ephemeris"))
 
