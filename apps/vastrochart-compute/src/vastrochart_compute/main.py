@@ -13,6 +13,7 @@ from vastrochart_compute.routes.divisional import router as divisional_router
 from vastrochart_compute.routes.hora import router as hora_router
 from vastrochart_compute.routes.mudda import router as mudda_router
 from vastrochart_compute.routes.panchang import router as panchang_router
+from vastrochart_compute.routes.transits import router as transits_router
 from vastrochart_compute.routes.yogas import router as yogas_router
 
 app = FastAPI(title="VAstroChart Compute", version="0.1.0")
@@ -23,6 +24,7 @@ app.include_router(panchang_router)
 app.include_router(hora_router)
 app.include_router(divisional_router)
 app.include_router(yogas_router)
+app.include_router(transits_router)
 
 EPHEMERIS_PATH = Path(os.environ.get("EPHEMERIS_PATH", "/opt/ephemeris"))
 
@@ -37,6 +39,8 @@ _FIELD_ERROR_CODES = {
     "lon": "INVALID_LONGITUDE",
     "ayanamsa": "UNSUPPORTED_AYANAMSA",
     "varga": "UNSUPPORTED_VARGA",
+    "start_date": "INVALID_DATE",
+    "end_date": "INVALID_DATE",
 }
 
 
