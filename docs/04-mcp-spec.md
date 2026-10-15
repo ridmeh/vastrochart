@@ -10,25 +10,22 @@ All tools are deterministic, stateless, pure functions. No caching, no server-si
 
 ## Call Sequencing
 
-Exactly one hard dependency: `compute_chart` must run first, since it's the only tool that touches raw birth data + ephemeris. Every other chart-dependent tool takes the specific already-computed values it needs as explicit input — not raw birth data, not a server-side lookup key. None of them depends on another derived tool's output, so they're siblings: call them in parallel or sequentially, client's choice.
+No hard dependencies between tools (ADR-037). Every tool that needs a birth chart takes the same raw birth-data parameters as its REST counterpart (`dob`, `tob`, `tz_offset`, `lat`, `lon`, `ayanamsa`, `node_type` where applicable) and recomputes whatever it needs internally — it does **not** take pre-computed values from a prior `compute_chart` call. This is a deliberate simplification from an earlier draft of this spec, which had chart-dependent tools consume `compute_chart`'s already-computed output to avoid re-deriving the ephemeris; measured recompute cost turned out to be low single-digit milliseconds even for the heaviest tool (`get_transit_hits`, ADR-036), so the efficiency that design was protecting isn't a real cost, and one validation contract per endpoint (shared with REST) is less to keep in sync than two.
+
+Every tool is a sibling — call any of them in any order, in parallel or sequentially, client's choice:
 
 ```
-compute_chart(dob, tob, tz_offset, lat, lon, ayanamsa)
-        │
-        │  returns: ascendant, planets[9], houses{whole_sign, placidus_kp}, nakshatra_distribution, aspects
-        │
-        ├──► get_dasha(moon_sidereal_longitude, dob, tob, tz_offset, as_of_date, depth)
-        ├──► get_mudda_dasha(moon_sidereal_longitude, natal_sun_longitude, dob, tob, tz_offset, year_offset, as_of_date)
-        ├──► compute_divisional(natal_planets, ascendant_sidereal_longitude, varga)
-        ├──► detect_yogas(natal_planets, houses, ascendant, category)
-        └──► get_transit_hits(natal_points, start_date, end_date, planets, aspect_types, orb_degrees)
+compute_chart(dob, tob, tz_offset, lat, lon, ayanamsa, node_type)
+get_dasha(dob, tob, tz_offset, lat, lon, ayanamsa, as_of_date, depth)
+get_mudda_dasha(dob, tob, tz_offset, lat, lon, ayanamsa, year_offset, as_of_date)
+compute_divisional(dob, tob, tz_offset, lat, lon, ayanamsa, node_type, varga)
+detect_yogas(dob, tob, tz_offset, lat, lon, ayanamsa, node_type, category)
+get_transit_hits(dob, tob, tz_offset, lat, lon, ayanamsa, node_type, start_date, end_date, planets, aspect_types, orb_degrees)
 
 get_panchang(date, lat, lon, tz_offset)       ← no birth-chart dependency at all
 get_hora(date, lat, lon, tz_offset)           ← same
-list_yoga_detectors()                         ← same — static registry, no input at all
+list_yoga_detectors(category)                 ← same — static registry, no birth data at all
 ```
-
-`get_mudda_dasha` derives `balance_at_birth` itself from `moon_sidereal_longitude` — it does not need `get_dasha`'s output first.
 
 ---
 
@@ -83,7 +80,8 @@ list_yoga_detectors()                         ← same — static registry, no i
     "aspects": {
       "vedic_graha_drishti": "array of {from, to, aspect_type, strength} — Lagna is a valid 'to' target",
       "kp_cuspal": "array of {house, cuspal_sub_lord, interlinked_houses} — cuspal sub-lord interlink technique"
-    }
+    },
+    "warnings": "array, e.g. EPHEMERIS_LOW_PRECISION_FALLBACK if dob falls outside the loaded Swiss Ephemeris files"
   }
 }
 ```
@@ -99,10 +97,12 @@ list_yoga_detectors()                         ← same — static registry, no i
   "name": "get_dasha",
   "description": "Returns birth-MD balance, full MD sequence, and active MD/AD/PD/Sookshma for a date.",
   "input": {
-    "moon_sidereal_longitude": "float — from compute_chart's planets array (Moon)",
     "dob": "ISO date",
     "tob": "24h time",
     "tz_offset": "string, e.g. '+05:30'",
+    "lat": "float, degrees",
+    "lon": "float, degrees",
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
     "as_of_date": "ISO date",
     "depth": "enum: 'md' | 'ad' | 'pd' | 'sookshma' | 'prana' (default: 'sookshma')"
   },
@@ -114,7 +114,8 @@ list_yoga_detectors()                         ← same — static registry, no i
       "antardasha": "same shape, present if depth >= ad",
       "pratyantardasha": "same shape, present if depth >= pd",
       "sookshma": "same shape, present if depth >= sookshma"
-    }
+    },
+    "warnings": "array, e.g. EPHEMERIS_LOW_PRECISION_FALLBACK if dob falls outside the loaded Swiss Ephemeris files"
   }
 }
 ```
@@ -123,18 +124,18 @@ list_yoga_detectors()                         ← same — static registry, no i
 
 ## Tool 3: `get_mudda_dasha`
 
-**Purpose**: Annual (Varshaphal) sub-dasha based on the solar return (ADR-030). Stateless — derives its own birth-MD balance from `moon_sidereal_longitude`, does not require `get_dasha` to have run first. Needs `natal_sun_longitude` too, to locate the solar return itself.
+**Purpose**: Annual (Varshaphal) sub-dasha based on the solar return (ADR-030). Stateless — derives its own birth-MD balance and locates the solar return from raw birth data, does not require `get_dasha` to have run first.
 
 ```json
 {
   "name": "get_mudda_dasha",
   "description": "Annual sub-dasha for a given year of life, computed from the solar return.",
   "input": {
-    "moon_sidereal_longitude": "float — from compute_chart's planets array (Moon)",
-    "natal_sun_longitude": "float — from compute_chart's planets array (Sun)",
     "dob": "ISO date",
     "tob": "24h time, e.g. '14:30'",
     "tz_offset": "string, e.g. '+05:30'",
+    "lat": "float, degrees",
+    "lon": "float, degrees",
     "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
     "year_offset": "int, e.g. 50 for the 50th year of life",
     "as_of_date": "ISO date, optional, default today - which day within the mudda year to describe"
@@ -142,7 +143,9 @@ list_yoga_detectors()                         ← same — static registry, no i
   "output": {
     "solar_return_date": "ISO date",
     "mudda_md": { "lord": "string", "start": "date", "end": "date" },
-    "mudda_ad": { "lord": "string", "start": "date", "end": "date" }
+    "mudda_ad": { "lord": "string", "start": "date", "end": "date" },
+    "as_of_date": "ISO date - the resolved value (today's date if not supplied)",
+    "warnings": "array, e.g. EPHEMERIS_LOW_PRECISION_FALLBACK"
   }
 }
 ```
@@ -217,12 +220,18 @@ list_yoga_detectors()                         ← same — static registry, no i
 {
   "name": "get_transit_hits",
   "input": {
-    "natal_points": "array of {name, sidereal_longitude} — natal planets + Lagna, from compute_chart",
+    "dob": "ISO date",
+    "tob": "24h time",
+    "tz_offset": "string, e.g. '+05:30'",
+    "lat": "float, degrees",
+    "lon": "float, degrees",
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
+    "node_type": "enum: 'true' | 'mean' (default: 'true')",
     "start_date": "ISO date",
     "end_date": "ISO date",
-    "planets": "array, default all transiting planets",
-    "aspect_types": "enum array: 'conjunction' | 'opposition' | 'trine' | 'square' | 'sextile'",
-    "orb_degrees": "float, default 1.0"
+    "planets": "array, default all 9 grahas",
+    "aspect_types": "enum array: 'conjunction' | 'opposition' | 'trine' | 'square' | 'sextile', default all 5",
+    "orb_degrees": "float, 0 < value <= 15, default 1.0"
   },
   "output": {
     "hits": "array of {transit_planet, aspect_type, natal_point, natal_point_longitude, exact_date, orb_entry_date, orb_exit_date, transit_longitude_at_exact}"
@@ -234,14 +243,19 @@ list_yoga_detectors()                         ← same — static registry, no i
 
 ## Tool 7: `compute_divisional`
 
-**Purpose**: Vargas (divisional charts) — D9, D10, D12, D30 etc. Pure transform of D1 sidereal longitudes; no birth data needed.
+**Purpose**: Vargas (divisional charts) — D9, D10, D12, D30 etc. The varga remapping itself is a pure transform of D1 sidereal longitudes (`compute/divisional.py`), but this tool derives the D1 longitudes from raw birth data rather than taking them as input.
 
 ```json
 {
   "name": "compute_divisional",
   "input": {
-    "natal_planets": "array of {name, sidereal_longitude} — from compute_chart",
-    "ascendant_sidereal_longitude": "float — from compute_chart",
+    "dob": "ISO date",
+    "tob": "24h time",
+    "tz_offset": "string, e.g. '+05:30'",
+    "lat": "float, degrees",
+    "lon": "float, degrees",
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
+    "node_type": "enum: 'true' | 'mean' (default: 'true')",
     "varga": "enum: 'D1' | 'D9' | 'D10' | 'D12' | 'D16' | 'D20' | 'D24' | 'D30' | 'D60'"
   },
   "output": {
@@ -256,15 +270,19 @@ list_yoga_detectors()                         ← same — static registry, no i
 
 ## Tool 8: `detect_yogas`
 
-**Purpose**: Classical yoga detection — pure function on an already-computed chart.
+**Purpose**: Classical yoga detection. The 11 detectors themselves are pure functions of sign/house placement (`compute/yogas.py`), but this tool derives those placements from raw birth data rather than taking them as input.
 
 ```json
 {
   "name": "detect_yogas",
   "input": {
-    "planets": "array — from compute_chart",
-    "houses": "object {whole_sign, placidus_kp} — from compute_chart",
-    "ascendant": "object — from compute_chart",
+    "dob": "ISO date",
+    "tob": "24h time",
+    "tz_offset": "string, e.g. '+05:30'",
+    "lat": "float, degrees",
+    "lon": "float, degrees",
+    "ayanamsa": "enum: 'lahiri' | 'krishnamurti' | 'raman' (default: 'lahiri')",
+    "node_type": "enum: 'true' | 'mean' (default: 'true')",
     "category": "enum: one of the registry categories (see list_yoga_detectors) | 'all' (default: 'all')"
   },
   "output": {
@@ -283,7 +301,9 @@ list_yoga_detectors()                         ← same — static registry, no i
 ```json
 {
   "name": "list_yoga_detectors",
-  "input": {},
+  "input": {
+    "category": "enum: one of the registry categories | 'all' (default: 'all')"
+  },
   "output": {
     "detectors": "array of {name, sanskrit, category, confidence, rule_summary, notes}"
   }
@@ -295,7 +315,7 @@ Reads from the same in-code registry as `detect_yogas`, so the two can't drift a
 
 ## Error contracts
 
-Every tool returns the identical error envelope as the REST error shape in `docs/09-output-schema.md` (`error: {code, message, field, retry_safe, documentation_url}`). Never partial success.
+Input validation failures and `EphemerisRangeError` raise inside the tool function and surface as a standard MCP tool error (`isError: true`, message text from the underlying Pydantic/exception message) — **not** REST's custom JSON error envelope. The envelope (`error: {code, message, field, retry_safe, documentation_url}`) is an HTTP-response-specific convenience and isn't meaningful inside the MCP protocol's own error reporting (ADR-037). Never partial success either way.
 
 ## Observability
 

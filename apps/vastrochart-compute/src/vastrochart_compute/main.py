@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from vastrochart_compute.compute.exceptions import EphemerisRangeError
 from vastrochart_compute.envelope import build_error_envelope
+from vastrochart_compute.mcp.server import mcp
 from vastrochart_compute.routes.charts import router as charts_router
 from vastrochart_compute.routes.dasha import router as dasha_router
 from vastrochart_compute.routes.divisional import router as divisional_router
@@ -16,7 +17,11 @@ from vastrochart_compute.routes.panchang import router as panchang_router
 from vastrochart_compute.routes.transits import router as transits_router
 from vastrochart_compute.routes.yogas import router as yogas_router
 
-app = FastAPI(title="VAstroChart Compute", version="0.1.0")
+# The MCP sub-app owns its own lifespan (session management etc.) - the
+# parent FastAPI app must run it too, or MCP requests fail at startup.
+_mcp_app = mcp.http_app(path="/")
+
+app = FastAPI(title="VAstroChart Compute", version="0.1.0", lifespan=_mcp_app.lifespan)
 app.include_router(charts_router)
 app.include_router(dasha_router)
 app.include_router(mudda_router)
@@ -25,6 +30,9 @@ app.include_router(hora_router)
 app.include_router(divisional_router)
 app.include_router(yogas_router)
 app.include_router(transits_router)
+# Mounted last, at a dedicated prefix - mounting at "/" would shadow every
+# other route (verified empirically; see docs/05-decisions.md ADR-037).
+app.mount("/mcp", _mcp_app)
 
 EPHEMERIS_PATH = Path(os.environ.get("EPHEMERIS_PATH", "/opt/ephemeris"))
 
