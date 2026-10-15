@@ -495,36 +495,67 @@ Every response wraps the payload in a standard envelope:
 ```json
 {
   "dob": "...", "tob": "...", "lat": ..., "lon": ..., "ayanamsa": "lahiri",
-  "corpus": "all"
+  "category": "all"
 }
 ```
+`category` is one of the registry categories below, or `"all"` (default).
 
 **Response `data`**:
 ```json
 {
-  "yogas_formed": [
+  "yogas": [
     {
       "name": "Gaja Kesari Yoga",
       "sanskrit": "गज केसरी योग",
-      "category": "benefic",
-      "formed_by": ["Jupiter in kendra from Moon"],
-      "exact_description": "Jupiter in 1st house from Moon (same sign)",
-      "classical_reference": {
-        "text": "Brihat Parashara Hora Shastra",
-        "chapter": 36,
-        "verse": 33
-      },
-      "strength": 0.85
-    }
-  ],
-  "yogas_absent_notable": [
+      "category": "chandra_based",
+      "present": true,
+      "confidence": "high",
+      "notes": null,
+      "formed_by": ["Jupiter in kendra from Moon"]
+    },
     {
       "name": "Chandra Mangala Yoga",
-      "reason_absent": "Moon and Mars not in same sign or in aspect"
+      "sanskrit": "चन्द्र-मंगल",
+      "category": "chandra_based",
+      "present": false,
+      "confidence": "high",
+      "notes": null,
+      "formed_by": []
     }
   ]
 }
 ```
+Every evaluated detector is returned, `present: true` or `false` — not just the ones that fired. This lets a caller distinguish "checked, not present" from "not evaluated at all" (a detector absent from the array entirely, e.g. because it isn't implemented yet or was filtered out by `category`).
+
+- `confidence`: `"high" | "medium" | "low"` — attached to the detector itself (not computed per-chart), set in `compute/yogas.py` and reclassified over time as the rule is refined. Changing a detector's confidence tier is a **data change, not a schema change** — no ADR or `/v2/` bump required for that alone.
+- `notes`: nullable string. Populated only for `medium`/`low` entries — the known variation/caveat a caller should know about before trusting the result (mirrors `docs/yoga-detectors-ledger.md`'s per-entry notes).
+- `formed_by`: plain-English clause(s) actually satisfied for this chart. Empty array when `present: false`.
+- No fabricated classical citations (chapter/verse) are returned — several detectors' exact textual source isn't verified; asserting one would violate this project's no-hallucination rule. A detector's source situation, when worth flagging, goes in `notes` as prose instead of a fake-precise structured reference.
+
+---
+
+## `/v1/yogas/registry` — Yoga Detector Catalog
+
+No birth data — a static list of every detector this version of the API evaluates, independent of any chart. Useful for a caller that wants to render "what we check and how confident we are" (e.g. a methodology/about screen) without computing a chart.
+
+**Input**: none.
+
+**Response `data`**:
+```json
+{
+  "detectors": [
+    {
+      "name": "Gaja Kesari Yoga",
+      "sanskrit": "गज केसरी योग",
+      "category": "chandra_based",
+      "confidence": "high",
+      "rule_summary": "Jupiter occupies house 1, 4, 7, or 10 counted from the Moon's house.",
+      "notes": null
+    }
+  ]
+}
+```
+`rule_summary` is the static condition text (same for every chart) — `/v1/yogas`'s per-result `formed_by` is the instance-specific version of this. Both this endpoint and `/v1/yogas` read from the same in-code registry, so they can never drift apart.
 
 ---
 

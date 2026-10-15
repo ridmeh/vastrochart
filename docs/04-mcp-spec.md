@@ -20,11 +20,12 @@ compute_chart(dob, tob, tz_offset, lat, lon, ayanamsa)
         ├──► get_dasha(moon_sidereal_longitude, dob, tob, tz_offset, as_of_date, depth)
         ├──► get_mudda_dasha(moon_sidereal_longitude, natal_sun_longitude, dob, tob, tz_offset, year_offset, as_of_date)
         ├──► compute_divisional(natal_planets, ascendant_sidereal_longitude, varga)
-        ├──► detect_yogas(natal_planets, houses, ascendant, yoga_corpus)
+        ├──► detect_yogas(natal_planets, houses, ascendant, category)
         └──► get_transit_hits(natal_points, start_date, end_date, planets, aspect_types, orb_degrees)
 
-get_panchang(date, lat, lon, tz_offset)   ← no birth-chart dependency at all
-get_hora(date, lat, lon, tz_offset)       ← same
+get_panchang(date, lat, lon, tz_offset)       ← no birth-chart dependency at all
+get_hora(date, lat, lon, tz_offset)           ← same
+list_yoga_detectors()                         ← same — static registry, no input at all
 ```
 
 `get_mudda_dasha` derives `balance_at_birth` itself from `moon_sidereal_longitude` — it does not need `get_dasha`'s output first.
@@ -264,14 +265,31 @@ get_hora(date, lat, lon, tz_offset)       ← same
     "planets": "array — from compute_chart",
     "houses": "object {whole_sign, placidus_kp} — from compute_chart",
     "ascendant": "object — from compute_chart",
-    "yoga_corpus": "enum: 'raja' | 'dhana' | 'arishta' | 'mahapurusha' | 'all' (default: 'all')"
+    "category": "enum: one of the registry categories (see list_yoga_detectors) | 'all' (default: 'all')"
   },
   "output": {
-    "yogas_formed": "array of {name, sanskrit, category, formed_by, exact_description, classical_reference: {text, chapter, verse}, strength}",
-    "yogas_absent_notable": "array of {name, reason_absent}"
+    "yogas": "array of {name, sanskrit, category, present, confidence, notes, formed_by} — every evaluated detector, present:true or false, not just hits"
   }
 }
 ```
+`confidence` (`high`/`medium`/`low`) is a per-detector property, not computed per-chart — see `docs/09-output-schema.md`'s `/v1/yogas` section for the full field contract and why no `classical_reference`/`strength` fields are returned.
+
+---
+
+## Tool 9: `list_yoga_detectors`
+
+**Purpose**: Static catalog of every yoga detector this version evaluates — no chart input, no birth data. Mirrors `/v1/yogas/registry`.
+
+```json
+{
+  "name": "list_yoga_detectors",
+  "input": {},
+  "output": {
+    "detectors": "array of {name, sanskrit, category, confidence, rule_summary, notes}"
+  }
+}
+```
+Reads from the same in-code registry as `detect_yogas`, so the two can't drift apart.
 
 ---
 

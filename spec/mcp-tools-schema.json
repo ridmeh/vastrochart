@@ -133,7 +133,7 @@
     },
     {
       "name": "detect_yogas",
-      "description": "Classical yoga detection — Raja, Dhana, Arishta, Pancha Mahapurusha, etc. Pure function on an already-computed chart.",
+      "description": "Classical yoga detection — Raja, Dhana, Arishta, Pancha Mahapurusha, etc. Pure function on an already-computed chart. Returns every evaluated detector with present/confidence/notes, not just the ones that fired.",
       "inputSchema": {
         "type": "object",
         "required": ["planets", "houses", "ascendant"],
@@ -141,8 +141,20 @@
           "planets": {"type": "array"},
           "houses": {"type": "object"},
           "ascendant": {"type": "object"},
-          "yoga_corpus": {"type": "string", "enum": ["raja", "dhana", "arishta", "mahapurusha", "all"], "default": "all"}
+          "category": {
+            "type": "string",
+            "enum": ["mahapurusha", "chandra_based", "surya_based", "raja_dhana", "vipreet_raja", "neechabhanga", "parivartana", "arishta", "all"],
+            "default": "all"
+          }
         }
+      }
+    },
+    {
+      "name": "list_yoga_detectors",
+      "description": "Static catalog of every yoga detector this version evaluates, with category, confidence (high/medium/low), and rule_summary. No chart input — mirrors /v1/yogas/registry.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
       }
     }
   ]
