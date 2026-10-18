@@ -25,8 +25,12 @@ jobs:
             curl -sS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
           done
 
-      - run: uv sync
-      - run: uv run pytest -q
+      # Bare `uv sync` installs nothing here - the workspace root has no
+      # installable package of its own (package = false in pyproject.toml),
+      # so there's no default sync target. Confirmed by reproducing this
+      # exact failure in a clean clone before adding --package.
+      - run: uv sync --package vastrochart-compute
+      - run: uv run --package vastrochart-compute pytest -q
 
   deploy:
     needs: test

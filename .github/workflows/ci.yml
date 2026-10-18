@@ -19,14 +19,32 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages
 
+      # Gitignored (license-sensitive binaries, apps/vastrochart-compute/ephemeris/NOTE.md) -
+      # golden/regression tests assert exact values hand-verified against real
+      # ephemeris precision; without these files pyswisseph silently falls back
+      # to Moshier and several assertions drift by ~1 second (found by actually
+      # running this in a clean clone while debugging the deploy pipeline, not
+      # anticipated up front - docs/05-decisions.md ADR-038).
+      - name: Fetch Swiss Ephemeris data files
+        run: |
+          cd apps/vastrochart-compute/ephemeris
+          for f in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl -sS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
+          done
+
       - name: Lint
         run: uv run ruff check .
 
       - name: Format check
         run: uv run ruff format --check .
 
+      # Must run from inside the subpackage directory - mypy resolves its
+      # config relative to the CWD, not the --package flag or the given source
+      # path, so run from the repo root it silently misses
+      # apps/vastrochart-compute/pyproject.toml's swisseph ignore_missing_imports
+      # override and fails with 11 false-positive import-not-found errors.
       - name: Type check
-        run: uv run --package vastrochart-compute mypy apps/vastrochart-compute/src
+        run: cd apps/vastrochart-compute && uv run mypy src
 
       - name: Test
         run: uv run --package vastrochart-compute pytest apps/vastrochart-compute/tests

@@ -44,11 +44,17 @@ Stateless Vedic + K.P. astrology chart compute API. MCP + REST. **"Stripe for as
 ## 🛠️ Build & Test Commands
 
 ```bash
-# Install dependencies
-uv sync
+# Install dependencies - the --package flag is required even here: the workspace
+# root has no installable package of its own (package = false), so a bare
+# `uv sync` resolves the lockfile but installs nothing into .venv. Confirmed by
+# reproducing on a fresh clone while debugging the GitHub Actions pipeline - a
+# bare `uv sync` + `uv run pytest` both silently no-op/fail on a clean checkout,
+# and only ever looked fine in-session because an already-correct .venv existed
+# from earlier work (docs/05-decisions.md ADR-038 has the full story).
+uv sync --package vastrochart-compute
 
 # Run tests
-uv run pytest                                                                   # all tests (all workspace members)
+uv run --package vastrochart-compute pytest                                    # all tests
 uv run --package vastrochart-compute pytest apps/vastrochart-compute/tests/golden/   # golden regression only
 uv run --package vastrochart-compute pytest -k "test_kp_sublord"               # specific test
 
