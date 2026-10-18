@@ -22,8 +22,9 @@ jobs:
         run: |
           cd apps/vastrochart-compute/ephemeris
           for f in sepl_18.se1 semo_18.se1 seas_18.se1; do
-            curl -sS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
+            curl -fsS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
           done
+          ls -la
 
       # Bare `uv sync` installs nothing here - the workspace root has no
       # installable package of its own (package = false in pyproject.toml),
