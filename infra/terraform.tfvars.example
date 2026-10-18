@@ -1,0 +1,9 @@
+subscription_id       = "00000000-0000-0000-0000-000000000000"
+apim_publisher_email  = "you@example.com"
+
+# Everything else has sane defaults (see variables.tf) - override only if needed:
+# project              = "vastrochart"
+# environment          = "prod"
+# location             = "eastus"
+# apim_publisher_name  = "VAstroChart"
+# container_image      = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
