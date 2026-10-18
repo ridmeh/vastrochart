@@ -1,0 +1,61 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write # required for Azure OIDC login - no stored client secret
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+
+      # Gitignored (license-sensitive binaries, apps/vastrochart-compute/ephemeris/NOTE.md) -
+      # golden tests need real ephemeris precision, not the Moshier fallback.
+      - name: Fetch Swiss Ephemeris data files
+        run: |
+          cd apps/vastrochart-compute/ephemeris
+          for f in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl -sS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
+          done
+
+      - run: uv sync
+      - run: uv run pytest -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # az acr build runs the build in ACR Tasks (cloud-side) rather than on
+      # the runner - sidesteps needing docker/buildx here, and builds
+      # natively for the target platform rather than cross-compiling.
+      - name: Build and push image
+        run: |
+          az acr build \
+            --registry ${{ vars.ACR_NAME }} \
+            --image vastrochart-compute:${{ github.sha }} \
+            --image vastrochart-compute:latest \
+            --platform linux/amd64 \
+            --file apps/vastrochart-compute/Dockerfile \
+            .
+
+      - name: Deploy new revision
+        run: |
+          az containerapp update \
+            --name ${{ vars.CONTAINER_APP_NAME }} \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_LOGIN_SERVER }}/vastrochart-compute:${{ github.sha }}
