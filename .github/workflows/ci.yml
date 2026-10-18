@@ -47,5 +47,16 @@ jobs:
       - name: Type check
         run: cd apps/vastrochart-compute && uv run mypy src
 
+      - name: Debug ephemeris path resolution
+        run: |
+          uv run --package vastrochart-compute python3 -c "
+          import vastrochart_compute.compute.ephemeris_init as m
+          print('module file:', m.__file__)
+          print('default path:', m._default_path())
+          print('exists:', m._default_path().exists())
+          import os
+          print('EPHEMERIS_PATH env:', os.environ.get('EPHEMERIS_PATH'))
+          "
+
       - name: Test
         run: uv run --package vastrochart-compute pytest apps/vastrochart-compute/tests
