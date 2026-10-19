@@ -70,6 +70,16 @@ resource "azurerm_container_app" "this" {
       percentage      = 100
     }
   }
+
+  # deploy.yml now owns which image is running (az containerapp update on
+  # every push to main, ADR-038/039) - without this, the next `terraform
+  # apply` would silently roll production back to whatever var.container_image
+  # was last set to here, undoing every deploy CI has done since. var.container_image
+  # still matters for the very first apply against a brand-new environment,
+  # where nothing has deployed yet.
+  lifecycle {
+    ignore_changes = [template[0].container[0].image]
+  }
 }
 
 resource "azurerm_role_assignment" "acr_pull" {

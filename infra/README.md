@@ -2,11 +2,10 @@
 
 Terraform for the Week 3 deploy target (`docs/06-roadmap.md`, `docs/03-architecture.md`): Resource Group, ACR, Log Analytics + App Insights, Key Vault, ACA Environment + Container App, Front Door Premium (+ WAF), API Management (Consumption).
 
-**Status: the real image is live** (`acrvastrochart8oh5a.azurecr.io/vastrochart-compute:v1`, deployed) and CI/CD is wired (`.github/workflows/deploy.yml` - push to `main` → test → `az acr build` → `az containerapp update`).
+**Status: the real image is live**, CI/CD is wired (`.github/workflows/deploy.yml` - push to `main` → test → `az acr build` → `az containerapp update`), and the request path is `Client → Front Door (WAF) → API Management (key + rate limit) → Container App` end to end, matching `docs/03-architecture.md`.
 
 ## What this does NOT do yet
 
-- Import the OpenAPI spec / configure API Management products, key tiers, rate limits (separate roadmap line)
 - Create any Key Vault secret values (Stripe webhook secret, API-key pepper) - those don't exist yet
 - Point a real DNS name (`api.vastrochart.com`) at the Front Door endpoint - you don't own that domain in this environment yet
 - Stripe wiring
@@ -50,3 +49,16 @@ Two things found empirically, not from documentation, while getting the first re
 - **`AcrPush` alone isn't enough for `az acr build`.** It let the identity push/pull images but not resolve/run against the registry via `az acr build` (`ERROR: The resource ... could not be found`, even though it demonstrably exists) - `az acr build` goes through ACR Tasks, which needs more than the data-plane push/pull role. Widened to `Contributor` scoped to just that one ACR resource (still not subscription- or RG-wide).
 
 This isn't Terraform-managed yet - it was faster to stand up via `az ad app create` / `az ad app federated-credential create` / `az role assignment create` / `gh secret set` / `gh variable set` directly. Codifying it with the `azuread` provider (plus `terraform import` for the resources that already exist) would close that gap if this ever needs to be reproducible from scratch rather than just re-run.
+
+## API Management (Step 3 - products, tiers, rate limits)
+
+`api_management.tf` imports the app's own OpenAPI spec (fetched live from the running Container App, not a checked-in file - see `scripts/convert_openapi_30.py`'s docstring) as two separate API entities:
+- `vastrochart-compute` (path `""`, the real `/v1/*` endpoints) - `subscription_required = true`
+- `vastrochart-health` (path `"ops"`, `/healthz` + `/readyz` only) - `subscription_required = false`, so a health probe never needs a key. Reachable at `/ops/healthz` / `/ops/readyz` through the gateway - not the bare paths, which only exist on the Container App directly.
+
+Four products (Free/Starter/Pro/Scale) each get the compute API plus a `rate-limit`/`quota` policy matching `docs/03-architecture.md`'s 1k/50k/500k/5M-calls/month table. Every tier auto-approves subscriptions for now (no Stripe gate yet - see `api_management.tf`'s comments).
+
+Three things found only by actually running this, not from documentation:
+- **Azure API Management's OpenAPI 3.1 import validator is incomplete.** It rejects valid JSON-Schema-2020-12 constructs FastAPI emits by default (`exclusiveMinimum` as a number instead of 3.0's boolean+`minimum` pair; `Optional[T]` as `anyOf: [T, {"type": "null"}]` instead of 3.0's `nullable: true`) with an opaque `ValidationError: One or more fields contain incorrect values` - no detail unless you go around Terraform and try the same content via `az apim api import` directly, which does print the real cause. `scripts/convert_openapi_30.py` downgrades the fetched 3.1 spec to 3.0.3 before import.
+- **The Consumption SKU doesn't support `rate-limit-by-key`/`quota-by-key`** ("Policy is not allowed in 'Consumption' sku") - only the plain `rate-limit`/`quota` policies, which happen to be exactly right anyway since they scope per-subscription by default.
+- **Two API entities can't share the same `path` + protocol + type** ("unless it's a part of the same version set") - the health API needed its own `path = "ops"`, not `""`, once `compute` also claimed `""`. Changing that path on an existing API, in the same apply as creating `compute` for the first time, hit a second issue: Terraform parallelizes independent resources by default, and `compute`'s creation raced `health`'s path change - fixed with an explicit `depends_on`.

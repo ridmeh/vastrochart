@@ -19,20 +19,32 @@ resource "azurerm_cdn_frontdoor_origin_group" "this" {
   load_balancing {}
 
   health_probe {
-    protocol            = "Https"
-    path                = "/healthz"
+    protocol = "Https"
+    # /ops/healthz, not bare /healthz - the origin is now API Management
+    # (see azurerm_cdn_frontdoor_origin.this below), and its unauthenticated
+    # health API is mounted at the "ops" path prefix (api_management.tf).
+    path                = "/ops/healthz"
     request_type        = "GET"
     interval_in_seconds = 30
   }
 }
 
+locals {
+  apim_hostname = replace(azurerm_api_management.this.gateway_url, "https://", "")
+}
+
+# Public entry point is API Management, not the Container App directly -
+# matches docs/03-architecture.md's Front Door -> API Mgmt -> Container
+# Apps chain. Bypassing APIM here would mean the subscription keys and
+# rate limits configured in api_management.tf never actually apply to
+# real traffic - API Management has to sit in the path, not beside it.
 resource "azurerm_cdn_frontdoor_origin" "this" {
   name                          = "origin-compute"
   cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.this.id
 
   enabled                        = true
-  host_name                      = azurerm_container_app.this.ingress[0].fqdn
-  origin_host_header             = azurerm_container_app.this.ingress[0].fqdn
+  host_name                      = local.apim_hostname
+  origin_host_header             = local.apim_hostname
   https_port                     = 443
   certificate_name_check_enabled = true
 }
