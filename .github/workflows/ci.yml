@@ -47,20 +47,5 @@ jobs:
       - name: Type check
         run: cd apps/vastrochart-compute && uv run mypy src
 
-      - name: Debug ephemeris path resolution
-        run: |
-          uv run --package vastrochart-compute python3 -c "
-          import swisseph as swe
-          import vastrochart_compute.compute.ephemeris_init as m
-          print('pyswisseph version:', swe.version)
-          print('default path:', m._default_path())
-          print('listdir:', list(m._default_path().iterdir()))
-          m.configure_ephemeris_path()
-          jd = swe.julday(1990, 1, 15, 9.0)
-          values, flags = swe.calc_ut(jd, swe.SUN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-          print('flags:', flags, 'FLG_MOSEPH bit set:', bool(flags & swe.FLG_MOSEPH))
-          print('values:', values)
-          "
-
       - name: Test
         run: uv run --package vastrochart-compute pytest apps/vastrochart-compute/tests
