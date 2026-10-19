@@ -10,6 +10,7 @@ Terraform for the Week 3 deploy target (`docs/06-roadmap.md`, `docs/03-architect
 - Create any Key Vault secret values (Stripe webhook secret, API-key pepper) - those don't exist yet
 - Point a real DNS name (`api.vastrochart.com`) at the Front Door endpoint - you don't own that domain in this environment yet
 - Stripe wiring
+- **A non-prod environment.** `deploy.yml` currently builds and deploys straight to this one environment (`vac-prod`) on every push to `main` - intentionally, per the owner (2026-10-19): prove the build/deploy/test flow against prod first, *then* split into a non-prod path that gets tested before promoting the same image to prod. Not yet started. Don't assume the direct-to-prod pipeline is the final design when touching this again.
 
 The Container App starts out running a public placeholder image (`mcr.microsoft.com/azuredocs/containerapps-helloworld`, listens on port 80 - verified by running it locally) so `apply` succeeds with nothing in ACR yet, and deliberately has no `registry` block or health probes wired in yet either (see the comments in `container_apps.tf` - a first apply with those in place hung for 20+ minutes and failed with "Operation expired", because the placeholder serves neither `/healthz` nor `/readyz` and AcrPull can't exist before the container app's identity does).
 

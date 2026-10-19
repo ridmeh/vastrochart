@@ -81,6 +81,7 @@ Each "week" below assumes **~30 focused hours**. If you can clear 5 days, it's o
 ## Week 4+ — Iterate Based On Developer Feedback
 
 Not part of MVP commitment:
+- **Split the deploy pipeline into non-prod and prod paths.** `deploy.yml` currently builds and deploys directly to the only environment that exists (`vac-prod`, see `infra/README.md` and ADR-038/039/040) on every push to `main` - deliberately, to prove the pipeline works before splitting it. Once proven: deploy to a non-prod environment first, test there, then promote the same built image to prod (gated, not a rebuild).
 - More yoga detectors (expand from 50 → 150)
 - Additional ayanamsas (Raman, Fagan-Bradley)
 - Bulk compute endpoint (array of charts in one call)
