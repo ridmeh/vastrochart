@@ -39,6 +39,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # This job has its own fresh actions/checkout - the `test` job's fetch
+      # doesn't carry over, jobs don't share a filesystem. Needed here too:
+      # the Dockerfile COPYs these into the image, and az acr build's context
+      # upload only includes what's actually on disk (found by a failed
+      # deploy: "COPY failed: no source files were specified").
+      - name: Fetch Swiss Ephemeris data files
+        run: |
+          cd apps/vastrochart-compute/ephemeris
+          for f in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl -fsS -L -o "$f" "https://raw.githubusercontent.com/aloistr/swisseph/master/ephe/$f"
+          done
+          ls -la
+
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
